@@ -217,7 +217,7 @@ router.patch('/:id', validate(schemas.updatePool), async (req: AuthRequest, res)
     const values: unknown[] = [];
     let idx = 1;
 
-    // Now allow denomination in allowed fields
+    // Allow denomination changes with auto-refund capability
     const allowedFields = ['name', 'game_date', 'game_time', 'game_label', 'denomination', 'payout_structure', 'tip_pct', 'max_per_player', 'approval_threshold', 'ot_rule'];
 
     for (const field of allowedFields) {
