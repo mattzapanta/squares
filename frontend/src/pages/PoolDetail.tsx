@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../App';
-import { PoolDetail as PoolDetailType, SPORTS_CONFIG, GridCell } from '../types';
+import { PoolDetail as PoolDetailType, SPORTS_CONFIG, GridCell, PayoutStructure } from '../types';
 import { pools as poolsApi, squares, players as playersApi, scores as scoresApi, payments, SearchedPlayer, PlayerPaymentSummary, LiveScoreData, CurrentWinner, PlayerWalletBalance, PlayerInviteLink } from '../api/client';
 
 // Cell Assignment Modal with inline player creation
@@ -257,7 +257,7 @@ export default function PoolDetail() {
   const [settingsDenomination, setSettingsDenomination] = useState<number>(0);
   const [settingsMaxPerPlayer, setSettingsMaxPerPlayer] = useState<number>(10);
   const [settingsTipPct, setSettingsTipPct] = useState<number>(10);
-  const [settingsPayoutStructure, setSettingsPayoutStructure] = useState<string>('standard');
+  const [settingsPayoutStructure, setSettingsPayoutStructure] = useState<PayoutStructure>('standard');
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState<{ success: boolean; text: string } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -1827,7 +1827,7 @@ export default function PoolDetail() {
               </label>
               <select
                 value={settingsPayoutStructure}
-                onChange={e => setSettingsPayoutStructure(e.target.value)}
+                onChange={e => setSettingsPayoutStructure(e.target.value as PayoutStructure)}
                 style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, color: 'var(--text)', fontSize: 14 }}
               >
                 <option value="standard">Standard (Equal split)</option>

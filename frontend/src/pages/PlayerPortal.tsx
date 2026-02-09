@@ -31,7 +31,6 @@ interface GridCell {
   player_id: string | null;
   player_name: string | null;
   claim_status: 'available' | 'pending' | 'claimed';
-  is_mine: boolean;
 }
 
 interface PoolDetailView {
@@ -49,7 +48,7 @@ interface PoolDetailView {
     game_date: string | null;
     game_time: string | null;
   };
-  grid: GridCell[][];
+  grid: (GridCell | null)[][];
   scores: { period_key: string; period_label: string; away_score: number; home_score: number; payout_pct: number }[];
   winners: { period_key: string; player_id: string; player_name: string; square_row: number; square_col: number; payout_amount: number }[];
   mySquares: { row_idx: number; col_idx: number }[];

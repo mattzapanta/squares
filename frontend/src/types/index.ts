@@ -1,5 +1,5 @@
 export type SportType = 'nfl' | 'nba' | 'nhl' | 'mlb' | 'ncaaf' | 'ncaab' | 'soccer' | 'custom';
-export type PayoutStructure = 'standard' | 'heavy_final' | 'halftime_final' | 'reverse';
+export type PayoutStructure = 'standard' | 'heavy_final' | 'halftime_final' | 'reverse' | 'custom';
 export type OTRule = 'include_final' | 'separate' | 'none';
 export type PoolStatus = 'open' | 'locked' | 'in_progress' | 'final' | 'cancelled' | 'suspended';
 export type PaymentStatus = 'pending' | 'confirmed' | 'deadbeat';
