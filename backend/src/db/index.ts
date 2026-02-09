@@ -45,8 +45,13 @@ export async function checkConnection(): Promise<boolean> {
   try {
     await pool.query('SELECT 1');
     return true;
-  } catch (error) {
-    console.error('Database connection failed:', error);
+  } catch (error: unknown) {
+    const err = error as Error & { code?: string };
+    console.error('Database connection failed:', {
+      message: err.message,
+      code: err.code,
+      dbUrl: config.database.url?.substring(0, 50) + '...',
+    });
     return false;
   }
 }

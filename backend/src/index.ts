@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { config } from './config.js';
-import { checkConnection } from './db/index.js';
+import { checkConnection, pool } from './db/index.js';
 
 // Routes
 import authRoutes from './routes/auth.js';
@@ -44,10 +44,21 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Health check
+// Health check with detailed error reporting
 app.get('/health', async (req, res) => {
-  const dbOk = await checkConnection();
-  res.json({ status: dbOk ? 'ok' : 'db_error', timestamp: new Date().toISOString() });
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  } catch (error: unknown) {
+    const err = error as Error & { code?: string };
+    res.json({
+      status: 'db_error',
+      timestamp: new Date().toISOString(),
+      error: err.message,
+      code: err.code,
+      dbUrlPrefix: config.database.url?.substring(0, 40),
+    });
+  }
 });
 
 // API Routes
