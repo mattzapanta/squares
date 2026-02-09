@@ -146,7 +146,7 @@ export default function Login() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
-              minLength={8}
+              minLength={5}
               style={{
                 width: '100%',
                 background: 'var(--bg)',
