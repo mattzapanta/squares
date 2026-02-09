@@ -70,3 +70,17 @@ export async function checkConnection(): Promise<boolean> {
     return false;
   }
 }
+
+// Run pending migrations (self-healing)
+export async function runMigrations(): Promise<void> {
+  try {
+    // Add custom_payouts column if it doesn't exist
+    await pool.query(`
+      ALTER TABLE pools ADD COLUMN IF NOT EXISTS custom_payouts JSONB
+    `);
+    console.log('Migrations completed successfully');
+  } catch (error) {
+    console.error('Migration error:', error);
+    // Don't throw - let the app continue even if migration fails
+  }
+}

@@ -63,6 +63,7 @@ export const pools = {
     game_time?: string;
     game_label?: string;
     payout_structure?: string;
+    custom_payouts?: Record<string, number>;
     tip_pct?: number;
     max_per_player?: number;
     approval_threshold?: number;

@@ -50,25 +50,49 @@ export const schemas = {
       v => [1, 5, 10, 25, 50, 100].includes(v),
       'Denomination must be 1, 5, 10, 25, 50, or 100'
     ),
-    payout_structure: z.enum(['standard', 'heavy_final', 'halftime_final', 'reverse']).default('standard'),
+    payout_structure: z.enum(['standard', 'heavy_final', 'halftime_final', 'reverse', 'custom']).default('standard'),
+    custom_payouts: z.record(z.string(), z.number().min(0).max(100)).optional(),
     tip_pct: z.number().int().min(0).max(100).default(10),
     max_per_player: z.number().int().min(1).max(100).default(10),
     approval_threshold: z.number().int().min(1).max(100).default(100), // 100 = effectively disabled
     ot_rule: z.enum(['include_final', 'separate', 'none']).default('include_final'),
     external_game_id: z.string().optional(),
-  }),
+  }).refine(
+    data => {
+      // If custom payout structure, validate custom_payouts adds up to 100
+      if (data.payout_structure === 'custom') {
+        if (!data.custom_payouts) return false;
+        const total = Object.values(data.custom_payouts).reduce((sum, pct) => sum + pct, 0);
+        return Math.abs(total - 100) < 0.01;
+      }
+      return true;
+    },
+    { message: 'Custom payouts must add up to 100%' }
+  ),
 
   updatePool: z.object({
     name: z.string().min(1).max(200).optional(),
     game_date: z.string().optional(),
     game_time: z.string().optional(),
     game_label: z.string().max(50).optional(),
-    payout_structure: z.enum(['standard', 'heavy_final', 'halftime_final', 'reverse']).optional(),
+    payout_structure: z.enum(['standard', 'heavy_final', 'halftime_final', 'reverse', 'custom']).optional(),
+    custom_payouts: z.record(z.string(), z.number().min(0).max(100)).optional(),
     tip_pct: z.number().int().min(0).max(100).optional(),
     max_per_player: z.number().int().min(1).max(100).optional(),
     approval_threshold: z.number().int().min(1).max(100).optional(),
     ot_rule: z.enum(['include_final', 'separate', 'none']).optional(),
-  }),
+  }).refine(
+    data => {
+      // If custom payout structure, validate custom_payouts adds up to 100
+      if (data.payout_structure === 'custom') {
+        if (!data.custom_payouts) return false;
+        const total = Object.values(data.custom_payouts).reduce((sum, pct) => sum + pct, 0);
+        return Math.abs(total - 100) < 0.01;
+      }
+      return true;
+    },
+    { message: 'Custom payouts must add up to 100%' }
+  ),
 
   // Squares
   claimSquare: z.object({

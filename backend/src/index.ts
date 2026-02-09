@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { config } from './config.js';
-import { checkConnection, pool } from './db/index.js';
+import { checkConnection, pool, runMigrations } from './db/index.js';
 
 // Routes
 import authRoutes from './routes/auth.js';
@@ -79,8 +79,15 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// Start server
-app.listen(config.port, () => {
-  console.log(`🎲 SquaresHQ API running on port ${config.port}`);
-  console.log(`   Health: http://localhost:${config.port}/health`);
-});
+// Start server with migrations
+async function start() {
+  // Run migrations before starting
+  await runMigrations();
+
+  app.listen(config.port, () => {
+    console.log(`🎲 SquaresHQ API running on port ${config.port}`);
+    console.log(`   Health: http://localhost:${config.port}/health`);
+  });
+}
+
+start().catch(console.error);

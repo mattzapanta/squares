@@ -1,7 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { SportType, SPORTS_CONFIG } from '../types';
 import { pools as poolsApi, games as gamesApi, Game } from '../api/client';
+
+// Preset payout structures
+const PAYOUT_PRESETS: Record<string, Record<string, number>> = {
+  standard: { q1: 25, q2: 25, q3: 25, q4: 25 },
+  heavy_final: { q1: 10, q2: 10, q3: 10, q4: 70 },
+  halftime_final: { q1: 0, q2: 25, q3: 0, q4: 75 },
+  reverse: { q1: 40, q2: 30, q3: 20, q4: 10 },
+};
 
 export default function CreatePool() {
   const navigate = useNavigate();
@@ -21,6 +29,12 @@ export default function CreatePool() {
     ot_rule: 'include_final',
     external_game_id: '' as string | undefined,
   });
+
+  // Custom payout state - percentages for each period
+  const [customPayouts, setCustomPayouts] = useState<Record<string, number>>({
+    q1: 25, q2: 25, q3: 25, q4: 25
+  });
+  const [inputMode, setInputMode] = useState<'percent' | 'dollar'>('percent');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [availableGames, setAvailableGames] = useState<Game[]>([]);
@@ -33,11 +47,18 @@ export default function CreatePool() {
     setError('');
 
     try {
-      const pool = await poolsApi.create({
+      const poolData: Parameters<typeof poolsApi.create>[0] = {
         ...form,
         sport,
         name: form.name || `${form.away_team} vs ${form.home_team}`,
-      });
+      };
+
+      // Include custom_payouts if using custom payout structure
+      if (form.payout_structure === 'custom') {
+        poolData.custom_payouts = customPayouts;
+      }
+
+      const pool = await poolsApi.create(poolData);
       navigate(`/pools/${pool.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create pool');
@@ -80,6 +101,65 @@ export default function CreatePool() {
   };
 
   const sc = sport ? SPORTS_CONFIG[sport] : null;
+
+  // Calculate pool total and payouts
+  const poolTotal = form.denomination * 100;
+
+  // Get period labels based on sport
+  const periodLabels = useMemo(() => {
+    if (!sc) return ['Q1', 'Q2', 'Q3', 'Q4'];
+    return sc.periods;
+  }, [sc]);
+
+  // Get current payout percentages (preset or custom)
+  const currentPayouts = useMemo(() => {
+    if (form.payout_structure === 'custom') {
+      return customPayouts;
+    }
+    const preset = PAYOUT_PRESETS[form.payout_structure] || PAYOUT_PRESETS.standard;
+    // Map preset to period keys based on sport
+    const result: Record<string, number> = {};
+    periodLabels.forEach((label, idx) => {
+      const key = `q${idx + 1}`;
+      result[key] = preset[key] || (100 / periodLabels.length);
+    });
+    return result;
+  }, [form.payout_structure, customPayouts, periodLabels]);
+
+  // Calculate total percentage
+  const totalPercentage = useMemo(() => {
+    return Object.values(currentPayouts).reduce((sum, pct) => sum + pct, 0);
+  }, [currentPayouts]);
+
+  // Calculate remaining percentage
+  const remainingPercentage = 100 - totalPercentage;
+
+  // Check if payouts are valid
+  const payoutsValid = Math.abs(totalPercentage - 100) < 0.01;
+
+  // Update custom payout from dollar amount
+  const updatePayoutFromDollar = (key: string, dollars: number) => {
+    const percentage = Math.round((dollars / poolTotal) * 100 * 100) / 100;
+    setCustomPayouts(prev => ({ ...prev, [key]: percentage }));
+  };
+
+  // Update custom payout from percentage
+  const updatePayoutFromPercent = (key: string, percent: number) => {
+    setCustomPayouts(prev => ({ ...prev, [key]: percent }));
+  };
+
+  // Reset custom payouts when switching to custom
+  useEffect(() => {
+    if (form.payout_structure === 'custom') {
+      // Initialize with equal split
+      const equalSplit = Math.round(100 / periodLabels.length);
+      const newPayouts: Record<string, number> = {};
+      periodLabels.forEach((_, idx) => {
+        newPayouts[`q${idx + 1}`] = equalSplit;
+      });
+      setCustomPayouts(newPayouts);
+    }
+  }, [form.payout_structure, periodLabels]);
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: 24 }}>
@@ -432,15 +512,23 @@ export default function CreatePool() {
 
           {/* Payout Structure */}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 10, fontFamily: 'var(--font-mono)' }}>
-              PAYOUT STRUCTURE
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, fontFamily: 'var(--font-mono)' }}>
+                PAYOUT STRUCTURE
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--gold)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+                Pool: ${poolTotal.toLocaleString()}
+              </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+
+            {/* Preset Options */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
               {[
-                { id: 'standard', name: 'Standard', desc: 'Equal split across all quarters (25% each)' },
-                { id: 'heavy_final', name: 'Heavy Final', desc: 'Q1-Q3: 10% each, Final: 70%' },
-                { id: 'halftime_final', name: 'Halftime/Final', desc: 'Halftime: 25%, Final: 75%' },
-                { id: 'reverse', name: 'Reverse', desc: 'Q1: 40%, Q2: 30%, Q3: 20%, Q4: 10%' },
+                { id: 'standard', name: 'Standard', desc: 'Equal split (25% each)' },
+                { id: 'heavy_final', name: 'Heavy Final', desc: 'Q1-Q3: 10%, Final: 70%' },
+                { id: 'halftime_final', name: 'Half/Final', desc: 'Half: 25%, Final: 75%' },
+                { id: 'reverse', name: 'Reverse', desc: 'Q1: 40% → Q4: 10%' },
+                { id: 'custom', name: 'Custom', desc: 'Set your own %' },
               ].map(p => (
                 <div
                   key={p.id}
@@ -451,14 +539,206 @@ export default function CreatePool() {
                     borderRadius: 8,
                     padding: '10px 12px',
                     cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
                   }}
                 >
-                  <div style={{ fontWeight: 700, fontSize: 13, color: form.payout_structure === p.id ? 'var(--green)' : 'var(--text)' }}>
-                    {p.name}
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: form.payout_structure === p.id ? 'var(--green)' : 'var(--text)' }}>
+                      {p.name}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--dim)', marginTop: 2 }}>{p.desc}</div>
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--dim)', marginTop: 2 }}>{p.desc}</div>
+                  {form.payout_structure === p.id && (
+                    <div style={{ color: 'var(--green)', fontSize: 16 }}>✓</div>
+                  )}
                 </div>
               ))}
+            </div>
+
+            {/* Custom Payout Editor */}
+            {form.payout_structure === 'custom' && (
+              <div style={{ background: 'var(--bg)', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)' }}>
+                    Enter by:
+                  </div>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button
+                      type="button"
+                      onClick={() => setInputMode('percent')}
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        borderRadius: 6,
+                        border: 'none',
+                        cursor: 'pointer',
+                        background: inputMode === 'percent' ? 'var(--green)' : 'var(--surface)',
+                        color: inputMode === 'percent' ? 'var(--bg)' : 'var(--muted)',
+                      }}
+                    >
+                      %
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInputMode('dollar')}
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        borderRadius: 6,
+                        border: 'none',
+                        cursor: 'pointer',
+                        background: inputMode === 'dollar' ? 'var(--green)' : 'var(--surface)',
+                        color: inputMode === 'dollar' ? 'var(--bg)' : 'var(--muted)',
+                      }}
+                    >
+                      $
+                    </button>
+                  </div>
+                </div>
+
+                {/* Period inputs */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {periodLabels.map((label, idx) => {
+                    const key = `q${idx + 1}`;
+                    const percent = customPayouts[key] || 0;
+                    const dollars = Math.round(poolTotal * percent / 100);
+
+                    return (
+                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{
+                          width: 50,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: 'var(--text)',
+                          fontFamily: 'var(--font-mono)'
+                        }}>
+                          {label}
+                        </div>
+                        {inputMode === 'percent' ? (
+                          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="1"
+                              value={percent}
+                              onChange={(e) => updatePayoutFromPercent(key, Number(e.target.value))}
+                              style={{
+                                flex: 1,
+                                background: 'var(--surface)',
+                                border: '1px solid var(--border)',
+                                borderRadius: 6,
+                                padding: '8px 10px',
+                                color: 'var(--text)',
+                                fontSize: 14,
+                                fontFamily: 'var(--font-mono)',
+                                fontWeight: 700,
+                                outline: 'none',
+                                textAlign: 'right',
+                              }}
+                            />
+                            <span style={{ fontSize: 12, color: 'var(--dim)', width: 16 }}>%</span>
+                          </div>
+                        ) : (
+                          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontSize: 12, color: 'var(--dim)' }}>$</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max={poolTotal}
+                              step="1"
+                              value={dollars}
+                              onChange={(e) => updatePayoutFromDollar(key, Number(e.target.value))}
+                              style={{
+                                flex: 1,
+                                background: 'var(--surface)',
+                                border: '1px solid var(--border)',
+                                borderRadius: 6,
+                                padding: '8px 10px',
+                                color: 'var(--text)',
+                                fontSize: 14,
+                                fontFamily: 'var(--font-mono)',
+                                fontWeight: 700,
+                                outline: 'none',
+                                textAlign: 'right',
+                              }}
+                            />
+                          </div>
+                        )}
+                        <div style={{
+                          width: 70,
+                          fontSize: 11,
+                          color: 'var(--muted)',
+                          textAlign: 'right',
+                          fontFamily: 'var(--font-mono)'
+                        }}>
+                          {inputMode === 'percent' ? `$${dollars.toLocaleString()}` : `${percent}%`}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Total / Remaining */}
+                <div style={{
+                  marginTop: 12,
+                  paddingTop: 12,
+                  borderTop: '1px solid var(--border)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: payoutsValid ? 'var(--green)' : 'var(--red)' }}>
+                    Total: {totalPercentage}%
+                  </div>
+                  {!payoutsValid && (
+                    <div style={{ fontSize: 11, color: 'var(--red)' }}>
+                      {remainingPercentage > 0
+                        ? `${remainingPercentage}% remaining ($${Math.round(poolTotal * remainingPercentage / 100).toLocaleString()})`
+                        : `${Math.abs(remainingPercentage)}% over limit`
+                      }
+                    </div>
+                  )}
+                  {payoutsValid && (
+                    <div style={{ fontSize: 11, color: 'var(--green)' }}>✓ Valid</div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Payout Preview */}
+            <div style={{ background: 'var(--bg)', borderRadius: 8, padding: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 8, fontFamily: 'var(--font-mono)' }}>
+                PAYOUT BREAKDOWN
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {periodLabels.map((label, idx) => {
+                  const key = `q${idx + 1}`;
+                  const percent = currentPayouts[key] || 0;
+                  const dollars = Math.round(poolTotal * percent / 100);
+
+                  return (
+                    <div key={key} style={{
+                      flex: 1,
+                      minWidth: 60,
+                      background: 'var(--surface)',
+                      borderRadius: 6,
+                      padding: '8px 10px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: 10, color: 'var(--dim)', fontFamily: 'var(--font-mono)' }}>{label}</div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--green)', fontFamily: 'var(--font-mono)' }}>
+                        ${dollars.toLocaleString()}
+                      </div>
+                      <div style={{ fontSize: 9, color: 'var(--muted)' }}>{percent}%</div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -519,6 +799,7 @@ export default function CreatePool() {
 
           <button
             onClick={() => setStep(3)}
+            disabled={form.payout_structure === 'custom' && !payoutsValid}
             style={{
               width: '100%',
               background: 'var(--green)',
@@ -528,9 +809,14 @@ export default function CreatePool() {
               padding: '12px 16px',
               fontSize: 14,
               fontWeight: 700,
+              opacity: form.payout_structure === 'custom' && !payoutsValid ? 0.5 : 1,
+              cursor: form.payout_structure === 'custom' && !payoutsValid ? 'not-allowed' : 'pointer',
             }}
           >
-            Review & Create →
+            {form.payout_structure === 'custom' && !payoutsValid
+              ? `Payouts must equal 100% (currently ${totalPercentage}%)`
+              : 'Review & Create →'
+            }
           </button>
         </div>
       )}
@@ -557,18 +843,49 @@ export default function CreatePool() {
                 </div>
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
               <div style={{ background: 'var(--bg)', borderRadius: 8, padding: 12 }}>
                 <div style={{ fontSize: 10, color: 'var(--dim)', fontFamily: 'var(--font-mono)', letterSpacing: 1 }}>Per Square</div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--green)', fontFamily: 'var(--font-mono)' }}>${form.denomination}</div>
               </div>
               <div style={{ background: 'var(--bg)', borderRadius: 8, padding: 12 }}>
                 <div style={{ fontSize: 10, color: 'var(--dim)', fontFamily: 'var(--font-mono)', letterSpacing: 1 }}>Pool Total</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--gold)', fontFamily: 'var(--font-mono)' }}>${form.denomination * 100}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--gold)', fontFamily: 'var(--font-mono)' }}>${poolTotal.toLocaleString()}</div>
               </div>
               <div style={{ background: 'var(--bg)', borderRadius: 8, padding: 12 }}>
                 <div style={{ fontSize: 10, color: 'var(--dim)', fontFamily: 'var(--font-mono)', letterSpacing: 1 }}>Tip Rate</div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--orange)', fontFamily: 'var(--font-mono)' }}>{form.tip_pct}%</div>
+              </div>
+            </div>
+
+            {/* Payout Breakdown in Confirm */}
+            <div style={{ background: 'var(--bg)', borderRadius: 8, padding: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 8, fontFamily: 'var(--font-mono)' }}>
+                PAYOUT BREAKDOWN
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {periodLabels.map((label, idx) => {
+                  const key = `q${idx + 1}`;
+                  const percent = currentPayouts[key] || 0;
+                  const dollars = Math.round(poolTotal * percent / 100);
+
+                  return (
+                    <div key={key} style={{
+                      flex: 1,
+                      minWidth: 60,
+                      background: 'var(--surface)',
+                      borderRadius: 6,
+                      padding: '8px 10px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: 10, color: 'var(--dim)', fontFamily: 'var(--font-mono)' }}>{label}</div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--green)', fontFamily: 'var(--font-mono)' }}>
+                        ${dollars.toLocaleString()}
+                      </div>
+                      <div style={{ fontSize: 9, color: 'var(--muted)' }}>{percent}%</div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

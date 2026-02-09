@@ -41,8 +41,8 @@ router.post('/', validate(schemas.createPool), async (req: AuthRequest, res) => 
   try {
     const pool = await withTransaction(async (client) => {
       const result = await client.query<Pool>(
-        `INSERT INTO pools (admin_id, name, sport, away_team, home_team, game_date, game_time, game_label, denomination, payout_structure, tip_pct, max_per_player, approval_threshold, ot_rule, external_game_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        `INSERT INTO pools (admin_id, name, sport, away_team, home_team, game_date, game_time, game_label, denomination, payout_structure, custom_payouts, tip_pct, max_per_player, approval_threshold, ot_rule, external_game_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
          RETURNING *`,
         [
           req.admin!.id,
@@ -55,6 +55,7 @@ router.post('/', validate(schemas.createPool), async (req: AuthRequest, res) => 
           req.body.game_label || null,
           req.body.denomination,
           req.body.payout_structure,
+          req.body.custom_payouts ? JSON.stringify(req.body.custom_payouts) : null,
           req.body.tip_pct,
           req.body.max_per_player,
           req.body.approval_threshold ?? 100, // Default 100 = effectively disabled
@@ -158,6 +159,12 @@ router.patch('/:id', validate(schemas.updatePool), async (req: AuthRequest, res)
         updates.push(`${field} = $${idx++}`);
         values.push(req.body[field]);
       }
+    }
+
+    // Handle custom_payouts specially (needs JSON stringify)
+    if (req.body.custom_payouts !== undefined) {
+      updates.push(`custom_payouts = $${idx++}`);
+      values.push(JSON.stringify(req.body.custom_payouts));
     }
 
     if (updates.length === 0) {
