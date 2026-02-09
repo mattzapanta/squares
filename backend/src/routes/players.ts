@@ -14,7 +14,7 @@ router.use(authenticateAdmin);
 router.get('/', async (req: AuthRequest, res) => {
   try {
     const result = await query(
-      `SELECT p.*, pp.paid, pp.payment_status, pp.joined_at,
+      `SELECT p.*, pp.paid, pp.payment_status, pp.joined_at, pp.amount_paid,
         (SELECT COUNT(*) FROM squares WHERE pool_id = $1 AND player_id = p.id AND claim_status = 'claimed') as square_count,
         (SELECT COUNT(*) FROM squares WHERE pool_id = $1 AND player_id = p.id AND claim_status = 'pending') as pending_count
        FROM players p
@@ -46,7 +46,7 @@ router.get('/invite-links', async (req: AuthRequest, res) => {
     }
 
     const result = await query(
-      `SELECT p.id, p.name, p.phone, p.email, p.auth_token, pp.paid, pp.payment_status,
+      `SELECT p.id, p.name, p.phone, p.email, p.auth_token, pp.paid, pp.payment_status, pp.amount_paid,
         (SELECT COUNT(*) FROM squares WHERE pool_id = $1 AND player_id = p.id AND claim_status = 'claimed') as square_count
        FROM players p
        JOIN pool_players pp ON p.id = pp.player_id
@@ -192,7 +192,7 @@ router.post('/bulk', validate(schemas.bulkAddPlayers), async (req: AuthRequest, 
 // Update player payment status
 router.patch('/:playerId', validate(schemas.updatePaymentStatus), async (req: AuthRequest, res) => {
   try {
-    const { paid, payment_status } = req.body;
+    const { paid, payment_status, amount_paid } = req.body;
     const poolId = req.params.id;
     const playerId = req.params.playerId;
 
@@ -207,6 +207,10 @@ router.patch('/:playerId', validate(schemas.updatePaymentStatus), async (req: Au
     if (payment_status !== undefined) {
       updates.push(`payment_status = $${idx++}`);
       values.push(payment_status);
+    }
+    if (amount_paid !== undefined) {
+      updates.push(`amount_paid = $${idx++}`);
+      values.push(amount_paid);
     }
 
     if (updates.length === 0) {
@@ -229,7 +233,7 @@ router.patch('/:playerId', validate(schemas.updatePaymentStatus), async (req: Au
       actor_type: 'admin',
       actor_id: req.admin!.id,
       action: 'payment_updated',
-      detail: { player_id: playerId, paid, payment_status },
+      detail: { player_id: playerId, paid, payment_status, amount_paid },
     });
 
     res.json(result.rows[0]);

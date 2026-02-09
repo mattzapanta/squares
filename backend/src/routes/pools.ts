@@ -117,7 +117,7 @@ router.get('/:id', async (req: AuthRequest, res) => {
     const [grid, players, scores, winners, pendingRequests] = await Promise.all([
       getGridWithPlayers(pool.id),
       query(
-        `SELECT p.*, pp.paid, pp.payment_status,
+        `SELECT p.*, pp.paid, pp.payment_status, pp.amount_paid,
           (SELECT COUNT(*) FROM squares WHERE pool_id = $1 AND player_id = p.id AND claim_status = 'claimed') as square_count,
           (SELECT COUNT(*) FROM squares WHERE pool_id = $1 AND player_id = p.id AND claim_status = 'pending') as pending_count
          FROM players p

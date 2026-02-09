@@ -148,6 +148,7 @@ export const schemas = {
   updatePaymentStatus: z.object({
     paid: z.boolean().optional(),
     payment_status: z.enum(['pending', 'confirmed', 'deadbeat']).optional(),
+    amount_paid: z.number().int().min(0).optional(),
   }),
 
   // Scores

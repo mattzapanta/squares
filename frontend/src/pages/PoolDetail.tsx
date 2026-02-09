@@ -492,7 +492,12 @@ export default function PoolDetail() {
 
   const handleTogglePayment = async (playerId: string, currentPaid: boolean) => {
     try {
-      await playersApi.updatePayment(pool.id, playerId, !currentPaid);
+      // Find the player to calculate owed amount
+      const player = pool.players.find(p => p.id === playerId);
+      const owed = (player?.square_count || 0) * pool.denomination;
+      // If marking as paid, set amount_paid to full owed amount; if unpaid, set to 0
+      const newAmountPaid = !currentPaid ? owed : 0;
+      await playersApi.updatePayment(pool.id, playerId, !currentPaid, undefined, newAmountPaid);
       loadPool();
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Failed to update');
@@ -1287,17 +1292,61 @@ export default function PoolDetail() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{ textAlign: 'right', marginRight: 4 }}>
                       <div style={{ fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-mono)', color: playerColors[p.id] }}>{p.square_count || 0} sq</div>
-                      <div style={{ fontSize: 10, color: 'var(--dim)' }}>${(p.square_count || 0) * pool.denomination}</div>
+                      <div style={{ fontSize: 10, color: 'var(--dim)' }}>${(p.square_count || 0) * pool.denomination} owed</div>
                     </div>
-                    <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: p.paid ? 'rgba(74, 222, 128, 0.15)' : 'rgba(251, 146, 60, 0.15)', color: p.paid ? 'var(--green)' : 'var(--orange)', border: `1px solid ${p.paid ? 'rgba(74, 222, 128, 0.25)' : 'rgba(251, 146, 60, 0.25)'}` }}>
-                      {p.paid ? 'PAID' : 'UNPAID'}
-                    </span>
-                    <button
-                      onClick={() => handleTogglePayment(p.id, !!p.paid)}
-                      style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}
-                    >
-                      {p.paid ? 'Mark Unpaid' : 'Mark Paid'}
-                    </button>
+                    {(() => {
+                      const owed = (p.square_count || 0) * pool.denomination;
+                      const paid = p.amount_paid || 0;
+                      const remaining = owed - paid;
+                      const isFullyPaid = remaining <= 0 && owed > 0;
+                      const isPartial = paid > 0 && remaining > 0;
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{
+                            padding: '2px 8px',
+                            borderRadius: 20,
+                            fontSize: 10,
+                            fontWeight: 700,
+                            background: isFullyPaid ? 'rgba(74, 222, 128, 0.15)' : isPartial ? 'rgba(251, 191, 36, 0.15)' : 'rgba(251, 146, 60, 0.15)',
+                            color: isFullyPaid ? 'var(--green)' : isPartial ? 'var(--gold)' : 'var(--orange)',
+                            border: `1px solid ${isFullyPaid ? 'rgba(74, 222, 128, 0.25)' : isPartial ? 'rgba(251, 191, 36, 0.25)' : 'rgba(251, 146, 60, 0.25)'}`,
+                            fontFamily: 'var(--font-mono)'
+                          }}>
+                            ${paid} / ${owed}
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="$"
+                            style={{ width: 50, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px', fontSize: 10, color: 'var(--fg)', fontFamily: 'var(--font-mono)', textAlign: 'center' }}
+                            onKeyDown={async (e) => {
+                              if (e.key === 'Enter') {
+                                const input = e.target as HTMLInputElement;
+                                const newAmount = parseInt(input.value) || 0;
+                                if (newAmount >= 0) {
+                                  try {
+                                    await playersApi.updatePayment(pool.id, p.id, newAmount >= owed, undefined, newAmount);
+                                    input.value = '';
+                                    loadPool();
+                                  } catch (err) {
+                                    alert('Failed to update payment');
+                                  }
+                                }
+                              }
+                            }}
+                          />
+                          {!isFullyPaid && owed > 0 && (
+                            <button
+                              onClick={() => handleTogglePayment(p.id, false)}
+                              style={{ background: 'var(--green)', border: 'none', borderRadius: 4, padding: '4px 6px', fontSize: 9, color: 'var(--bg)', fontFamily: 'var(--font-mono)', cursor: 'pointer' }}
+                              title="Mark as fully paid"
+                            >
+                              Full
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                     <button
                       onClick={async () => {
                         const confirmed = confirm(`Remove ${p.name} from this pool? Their squares will be released.${p.paid ? ' Any payments will be refunded to their wallet.' : ''}`);

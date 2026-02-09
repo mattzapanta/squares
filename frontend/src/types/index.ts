@@ -25,6 +25,7 @@ export interface Player {
   pending_count?: number;
   paid?: boolean;
   payment_status?: PaymentStatus;
+  amount_paid?: number;
 }
 
 export interface Pool {

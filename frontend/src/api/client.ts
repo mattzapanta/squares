@@ -184,10 +184,14 @@ export const players = {
       }
     ),
 
-  updatePayment: (poolId: string, playerId: string, paid: boolean) =>
+  updatePayment: (poolId: string, playerId: string, paid: boolean, payment_status?: string, amount_paid?: number) =>
     request(`/pools/${poolId}/players/${playerId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ paid, payment_status: paid ? 'confirmed' : 'pending' }),
+      body: JSON.stringify({
+        paid,
+        payment_status: payment_status || (paid ? 'confirmed' : 'pending'),
+        ...(amount_paid !== undefined && { amount_paid }),
+      }),
     }),
 
   markDeadbeat: (poolId: string, playerId: string) =>
