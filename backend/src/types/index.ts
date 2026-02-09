@@ -32,6 +32,7 @@ export interface Pool {
   payout_structure: PayoutStructure;
   tip_pct: number;
   max_per_player: number;
+  approval_threshold: number;
   ot_rule: OTRule;
   col_digits: number[] | null;
   row_digits: number[] | null;
@@ -50,13 +51,17 @@ export interface PoolPlayer {
   joined_at: Date;
 }
 
+export type ClaimStatus = 'available' | 'pending' | 'claimed';
+
 export interface Square {
   id: string;
   pool_id: string;
   row_idx: number;
   col_idx: number;
   player_id: string | null;
+  claim_status: ClaimStatus;
   claimed_at: Date | null;
+  requested_at: Date | null;
   released_at: Date | null;
   is_admin_override: boolean;
 }
@@ -133,8 +138,17 @@ export interface CreatePoolRequest {
   payout_structure?: PayoutStructure;
   tip_pct?: number;
   max_per_player?: number;
+  approval_threshold?: number;
   ot_rule?: OTRule;
   external_game_id?: string;
+}
+
+export interface PendingSquareRequest {
+  row: number;
+  col: number;
+  player_id: string;
+  player_name: string;
+  requested_at: Date;
 }
 
 export interface ClaimSquareRequest {
@@ -179,4 +193,33 @@ export interface PoolDetail extends Pool {
   players: (Player & { square_count: number; paid: boolean; payment_status: PaymentStatus })[];
   scores: Score[];
   winners: (Winner & { player_name: string })[];
+}
+
+// Player Groups
+export interface PlayerGroup {
+  id: string;
+  admin_id: string;
+  name: string;
+  description: string | null;
+  color: string;
+  created_at: Date;
+  member_count?: number;
+}
+
+export interface PlayerGroupMember {
+  group_id: string;
+  player_id: string;
+  added_at: Date;
+}
+
+export interface PoolInvite {
+  id: string;
+  pool_id: string;
+  player_id: string;
+  channel: 'sms' | 'email' | 'both';
+  status: 'pending' | 'sent' | 'failed' | 'joined';
+  sent_at: Date | null;
+  joined_at: Date | null;
+  error: string | null;
+  created_at: Date;
 }

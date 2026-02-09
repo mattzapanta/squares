@@ -53,6 +53,7 @@ export const schemas = {
     payout_structure: z.enum(['standard', 'heavy_final', 'halftime_final', 'reverse']).default('standard'),
     tip_pct: z.number().int().min(0).max(100).default(10),
     max_per_player: z.number().int().min(1).max(100).default(10),
+    approval_threshold: z.number().int().min(1).max(100).default(100), // 100 = effectively disabled
     ot_rule: z.enum(['include_final', 'separate', 'none']).default('include_final'),
     external_game_id: z.string().optional(),
   }),
@@ -65,6 +66,7 @@ export const schemas = {
     payout_structure: z.enum(['standard', 'heavy_final', 'halftime_final', 'reverse']).optional(),
     tip_pct: z.number().int().min(0).max(100).optional(),
     max_per_player: z.number().int().min(1).max(100).optional(),
+    approval_threshold: z.number().int().min(1).max(100).optional(),
     ot_rule: z.enum(['include_final', 'separate', 'none']).optional(),
   }),
 

@@ -1,133 +1,225 @@
-import { config } from '../config.js';
+// ESPN API Integration for real sports data
+// Uses ESPN's public endpoints (unofficial but stable)
 
-const BALLDONTLIE_BASE = 'https://api.balldontlie.io/v1';
+const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports';
 
-interface BDLGame {
-  id: number;
+interface ESPNGame {
+  id: string;
   date: string;
-  time: string;
-  status: string;
-  home_team: { abbreviation: string; full_name: string };
-  visitor_team: { abbreviation: string; full_name: string };
-  home_team_score: number;
-  visitor_team_score: number;
-}
-
-interface BDLResponse<T> {
-  data: T[];
-  meta?: { next_cursor?: number };
-}
-
-async function bdlFetch<T>(endpoint: string): Promise<T> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+  name: string;
+  shortName: string;
+  status: {
+    type: {
+      name: string;  // STATUS_SCHEDULED, STATUS_IN_PROGRESS, STATUS_FINAL
+      state: string; // pre, in, post
+      completed: boolean;
+      description: string;
+    };
+    displayClock?: string;
+    period?: number;
   };
-
-  if (config.ballDontLie.apiKey) {
-    headers['Authorization'] = config.ballDontLie.apiKey;
-  }
-
-  const response = await fetch(`${BALLDONTLIE_BASE}${endpoint}`, { headers });
-
-  if (!response.ok) {
-    throw new Error(`BallDontLie API error: ${response.status}`);
-  }
-
-  return response.json();
+  competitions: {
+    id: string;
+    date: string;
+    venue?: { fullName: string };
+    competitors: {
+      id: string;
+      homeAway: 'home' | 'away';
+      team: {
+        id: string;
+        abbreviation: string;
+        displayName: string;
+        shortDisplayName: string;
+        logo?: string;
+      };
+      score?: string;
+    }[];
+  }[];
 }
 
-// Get upcoming NBA games
-export async function getNBAGames(date?: string): Promise<any[]> {
-  try {
-    const targetDate = date || new Date().toISOString().split('T')[0];
-    const response = await bdlFetch<BDLResponse<BDLGame>>(`/games?dates[]=${targetDate}`);
+interface ESPNResponse {
+  events: ESPNGame[];
+}
 
-    return response.data.map(game => ({
-      id: `nba-${game.id}`,
-      external_id: game.id.toString(),
-      sport: 'nba',
-      away: game.visitor_team.abbreviation,
-      home: game.home_team.abbreviation,
-      away_full: game.visitor_team.full_name,
-      home_full: game.home_team.full_name,
-      date: game.date,
-      time: game.time || 'TBD',
-      status: game.status,
-      away_score: game.visitor_team_score,
-      home_score: game.home_team_score,
-    }));
+// ESPN sport slugs
+const ESPN_SPORTS: Record<string, { league: string; sport: string }> = {
+  nfl: { sport: 'football', league: 'nfl' },
+  nba: { sport: 'basketball', league: 'nba' },
+  nhl: { sport: 'hockey', league: 'nhl' },
+  mlb: { sport: 'baseball', league: 'mlb' },
+  ncaaf: { sport: 'football', league: 'college-football' },
+  ncaab: { sport: 'basketball', league: 'mens-college-basketball' },
+  soccer: { sport: 'soccer', league: 'eng.1' }, // Premier League
+  mls: { sport: 'soccer', league: 'usa.1' }, // MLS
+};
+
+async function fetchESPN(sport: string, league: string, date?: string): Promise<ESPNGame[]> {
+  try {
+    let url = `${ESPN_BASE}/${sport}/${league}/scoreboard`;
+    if (date) {
+      // ESPN expects dates in YYYYMMDD format
+      const formattedDate = date.replace(/-/g, '');
+      url += `?dates=${formattedDate}`;
+    }
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error(`ESPN API error: ${response.status}`);
+      return [];
+    }
+
+    const data = await response.json() as ESPNResponse;
+    return data.events || [];
   } catch (error) {
-    console.error('Failed to fetch NBA games:', error);
+    console.error(`Failed to fetch ESPN ${sport}/${league}:`, error);
     return [];
   }
 }
 
-// For other sports, we'll use mock data since BallDontLie is NBA-focused
-// In production, you'd integrate ESPN API, SportsRadar, or similar
+function parseESPNGame(game: ESPNGame, sportKey: string): any {
+  const competition = game.competitions[0];
+  if (!competition) return null;
 
-const MOCK_GAMES: Record<string, any[]> = {
-  nfl: [
-    { id: 'nfl-1', away: 'KC', home: 'SF', away_full: 'Kansas City Chiefs', home_full: 'San Francisco 49ers', date: '2026-02-09', time: '6:30 PM', label: 'Super Bowl LX' },
-    { id: 'nfl-2', away: 'DAL', home: 'PHI', away_full: 'Dallas Cowboys', home_full: 'Philadelphia Eagles', date: '2026-02-09', time: '4:25 PM', label: 'Week 18' },
-    { id: 'nfl-3', away: 'BUF', home: 'MIA', away_full: 'Buffalo Bills', home_full: 'Miami Dolphins', date: '2026-02-09', time: '1:00 PM', label: 'Week 18' },
-    { id: 'nfl-4', away: 'DET', home: 'GB', away_full: 'Detroit Lions', home_full: 'Green Bay Packers', date: '2026-02-09', time: '8:20 PM', label: 'Week 18' },
-  ],
-  nhl: [
-    { id: 'nhl-1', away: 'EDM', home: 'VGK', away_full: 'Edmonton Oilers', home_full: 'Vegas Golden Knights', date: '2026-02-09', time: '10:00 PM' },
-    { id: 'nhl-2', away: 'TOR', home: 'MTL', away_full: 'Toronto Maple Leafs', home_full: 'Montreal Canadiens', date: '2026-02-10', time: '7:00 PM' },
-    { id: 'nhl-3', away: 'BOS', home: 'NYR', away_full: 'Boston Bruins', home_full: 'New York Rangers', date: '2026-02-10', time: '7:30 PM' },
-  ],
-  mlb: [
-    { id: 'mlb-1', away: 'NYY', home: 'BOS', away_full: 'New York Yankees', home_full: 'Boston Red Sox', date: '2026-04-01', time: '1:05 PM' },
-    { id: 'mlb-2', away: 'LAD', home: 'SF', away_full: 'Los Angeles Dodgers', home_full: 'San Francisco Giants', date: '2026-04-01', time: '4:15 PM' },
-  ],
-  ncaaf: [
-    { id: 'ncaaf-1', away: 'BAMA', home: 'UGA', away_full: 'Alabama', home_full: 'Georgia', date: '2026-09-05', time: '3:30 PM', label: 'SEC Opener' },
-    { id: 'ncaaf-2', away: 'OSU', home: 'MICH', away_full: 'Ohio State', home_full: 'Michigan', date: '2026-11-28', time: '12:00 PM', label: 'The Game' },
-  ],
-  ncaab: [
-    { id: 'ncaab-1', away: 'DUKE', home: 'UNC', away_full: 'Duke', home_full: 'North Carolina', date: '2026-02-12', time: '9:00 PM' },
-    { id: 'ncaab-2', away: 'UK', home: 'KU', away_full: 'Kentucky', home_full: 'Kansas', date: '2026-02-15', time: '6:00 PM' },
-  ],
-  soccer: [
-    { id: 'soc-1', away: 'ARS', home: 'MCI', away_full: 'Arsenal', home_full: 'Manchester City', date: '2026-02-15', time: '12:30 PM', label: 'Premier League' },
-    { id: 'soc-2', away: 'RMA', home: 'BAR', away_full: 'Real Madrid', home_full: 'Barcelona', date: '2026-02-20', time: '3:00 PM', label: 'El Clasico' },
-  ],
-};
+  const homeTeam = competition.competitors.find(c => c.homeAway === 'home');
+  const awayTeam = competition.competitors.find(c => c.homeAway === 'away');
 
-export async function getGames(sport: string, date?: string): Promise<any[]> {
-  // Use BallDontLie for NBA
-  if (sport === 'nba') {
-    const games = await getNBAGames(date);
-    if (games.length > 0) return games;
+  if (!homeTeam || !awayTeam) return null;
+
+  // Parse date/time
+  const gameDate = new Date(game.date);
+  const dateStr = gameDate.toISOString().split('T')[0];
+  const timeStr = gameDate.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'America/New_York'
+  });
+
+  // Determine game status
+  let status = 'scheduled';
+  if (game.status.type.state === 'in') {
+    status = 'in_progress';
+  } else if (game.status.type.state === 'post' || game.status.type.completed) {
+    status = 'final';
   }
 
-  // Return mock data for other sports (or NBA fallback)
-  const games = MOCK_GAMES[sport] || [];
-  return games.map(g => ({ ...g, sport }));
+  return {
+    id: `${sportKey}-${game.id}`,
+    external_id: game.id,
+    sport: sportKey,
+    away: awayTeam.team.abbreviation,
+    home: homeTeam.team.abbreviation,
+    away_full: awayTeam.team.displayName,
+    home_full: homeTeam.team.displayName,
+    date: dateStr,
+    time: timeStr,
+    status,
+    status_detail: game.status.type.description,
+    away_score: awayTeam.score ? parseInt(awayTeam.score) : null,
+    home_score: homeTeam.score ? parseInt(homeTeam.score) : null,
+    venue: competition.venue?.fullName,
+    clock: game.status.displayClock,
+    period: game.status.period,
+    away_logo: awayTeam.team.logo,
+    home_logo: homeTeam.team.logo,
+  };
 }
 
-export async function getGameScores(sport: string, gameId: string): Promise<any | null> {
-  // For NBA, try to get live scores
-  if (sport === 'nba' && gameId.startsWith('nba-')) {
-    try {
-      const externalId = gameId.replace('nba-', '');
-      const response = await bdlFetch<{ data: BDLGame }>(`/games/${externalId}`);
-      const game = response.data;
+// Get games for any sport
+export async function getGames(sport: string, date?: string): Promise<any[]> {
+  const espnConfig = ESPN_SPORTS[sport];
 
-      return {
-        id: gameId,
-        away: game.visitor_team.abbreviation,
-        home: game.home_team.abbreviation,
-        away_score: game.visitor_team_score,
-        home_score: game.home_team_score,
-        status: game.status,
-      };
-    } catch (error) {
-      console.error('Failed to fetch game scores:', error);
-    }
+  if (!espnConfig) {
+    console.log(`Sport '${sport}' not configured for ESPN API`);
+    return [];
   }
 
-  // For other sports, return null (manual entry required)
-  return null;
+  const games = await fetchESPN(espnConfig.sport, espnConfig.league, date);
+
+  return games
+    .map(g => parseESPNGame(g, sport))
+    .filter(Boolean)
+    .sort((a, b) => new Date(a.date + ' ' + a.time).getTime() - new Date(b.date + ' ' + b.time).getTime());
+}
+
+// Get live scores for a specific game
+export async function getGameScores(sport: string, gameId: string): Promise<any | null> {
+  const espnConfig = ESPN_SPORTS[sport];
+
+  if (!espnConfig) {
+    return null;
+  }
+
+  // Extract the ESPN ID from our composite ID
+  const espnId = gameId.replace(`${sport}-`, '');
+
+  try {
+    const url = `${ESPN_BASE}/${espnConfig.sport}/${espnConfig.league}/summary?event=${espnId}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      console.error(`ESPN API error: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json() as any;
+    const competition = data.header?.competitions?.[0];
+
+    if (!competition) return null;
+
+    const homeTeam = competition.competitors.find((c: any) => c.homeAway === 'home');
+    const awayTeam = competition.competitors.find((c: any) => c.homeAway === 'away');
+
+    if (!homeTeam || !awayTeam) return null;
+
+    // Get period scores if available
+    const linescores = data.boxscore?.teams;
+    let periodScores: { period: string; away: number; home: number }[] = [];
+
+    if (linescores) {
+      const homeLinescores = linescores.find((t: any) => t.homeAway === 'home')?.statistics;
+      const awayLinescores = linescores.find((t: any) => t.homeAway === 'away')?.statistics;
+
+      // ESPN format varies by sport - this is a simplified version
+      // Period scores would need sport-specific parsing
+    }
+
+    return {
+      id: gameId,
+      sport,
+      away: awayTeam.team.abbreviation,
+      home: homeTeam.team.abbreviation,
+      away_full: awayTeam.team.displayName,
+      home_full: homeTeam.team.displayName,
+      away_score: awayTeam.score ? parseInt(awayTeam.score) : 0,
+      home_score: homeTeam.score ? parseInt(homeTeam.score) : 0,
+      status: competition.status?.type?.state === 'post' ? 'final' :
+              competition.status?.type?.state === 'in' ? 'in_progress' : 'scheduled',
+      status_detail: competition.status?.type?.description,
+      clock: competition.status?.displayClock,
+      period: competition.status?.period,
+    };
+  } catch (error) {
+    console.error('Failed to fetch game scores:', error);
+    return null;
+  }
+}
+
+// Get available sports
+export function getAvailableSports(): { key: string; name: string; icon: string }[] {
+  return [
+    { key: 'nfl', name: 'NFL', icon: '🏈' },
+    { key: 'nba', name: 'NBA', icon: '🏀' },
+    { key: 'nhl', name: 'NHL', icon: '🏒' },
+    { key: 'mlb', name: 'MLB', icon: '⚾' },
+    { key: 'ncaaf', name: 'NCAAF', icon: '🏈' },
+    { key: 'ncaab', name: 'NCAAB', icon: '🏀' },
+    { key: 'soccer', name: 'Premier League', icon: '⚽' },
+    { key: 'mls', name: 'MLS', icon: '⚽' },
+  ];
+}
+
+// For backwards compatibility - get games (renamed from getGames)
+export async function getNBAGames(date?: string): Promise<any[]> {
+  return getGames('nba', date);
 }

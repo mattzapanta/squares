@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { config } from '../config.js';
 import { query } from '../db/index.js';
 import { Admin, Player } from '../types/index.js';
@@ -84,5 +84,6 @@ export function generateToken(admin: Admin): string {
     type: 'admin',
   };
 
-  return jwt.sign(payload, config.jwt.secret, { expiresIn: config.jwt.expiresIn });
+  const options: SignOptions = { expiresIn: config.jwt.expiresIn };
+  return jwt.sign(payload, config.jwt.secret, options);
 }

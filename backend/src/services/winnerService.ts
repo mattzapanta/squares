@@ -49,7 +49,7 @@ export async function calculateWinner(
       throw new Error('Invalid digit mapping');
     }
 
-    // Find who owns that square
+    // Find who owns that square (only claimed squares can win, not pending)
     const squareResult = await client.query(
       `SELECT s.*, p.name as player_name
        FROM squares s
@@ -60,6 +60,11 @@ export async function calculateWinner(
 
     if (squareResult.rows.length === 0 || !squareResult.rows[0].player_id) {
       // No one owns this square - no winner
+      return null;
+    }
+
+    // Pending squares cannot win - only fully claimed squares
+    if (squareResult.rows[0].claim_status !== 'claimed') {
       return null;
     }
 
@@ -223,4 +228,65 @@ export async function getPoolScores(poolId: string) {
     [poolId]
   );
   return result.rows;
+}
+
+// Calculate current winner based on live scores (without saving to DB)
+// This is used for real-time display of who's currently winning
+export async function calculateCurrentWinner(
+  pool: Pool,
+  awayScore: number,
+  homeScore: number
+): Promise<{
+  player_id: string;
+  player_name: string;
+  square_row: number;
+  square_col: number;
+  payout_amount: number;
+} | null> {
+  if (!pool.col_digits || !pool.row_digits) {
+    return null;
+  }
+
+  // Find the winning square coordinates based on last digits
+  const awayLastDigit = awayScore % 10;
+  const homeLastDigit = homeScore % 10;
+
+  const col = pool.col_digits.indexOf(awayLastDigit);
+  const row = pool.row_digits.indexOf(homeLastDigit);
+
+  if (col === -1 || row === -1) {
+    return null;
+  }
+
+  // Find who owns that square
+  const squareResult = await query(
+    `SELECT s.*, p.name as player_name
+     FROM squares s
+     LEFT JOIN players p ON s.player_id = p.id
+     WHERE s.pool_id = $1 AND s.row_idx = $2 AND s.col_idx = $3`,
+    [pool.id, row, col]
+  );
+
+  if (squareResult.rows.length === 0 || !squareResult.rows[0].player_id) {
+    return null;
+  }
+
+  // Only claimed squares can win
+  if (squareResult.rows[0].claim_status !== 'claimed') {
+    return null;
+  }
+
+  const square = squareResult.rows[0];
+  const poolTotal = 100 * pool.denomination;
+  const config = SPORTS_CONFIG[pool.sport as SportType];
+  const evenPct = Math.floor(100 / config.periods.length);
+  const payoutAmount = Math.round(poolTotal * evenPct / 100);
+
+  return {
+    player_id: square.player_id,
+    player_name: square.player_name,
+    square_row: row,
+    square_col: col,
+    payout_amount: payoutAmount,
+  };
 }

@@ -15,7 +15,8 @@ router.get('/', async (req: AuthRequest, res) => {
   try {
     const result = await query(
       `SELECT p.*, pp.paid, pp.payment_status, pp.joined_at,
-        (SELECT COUNT(*) FROM squares WHERE pool_id = $1 AND player_id = p.id) as square_count
+        (SELECT COUNT(*) FROM squares WHERE pool_id = $1 AND player_id = p.id AND claim_status = 'claimed') as square_count,
+        (SELECT COUNT(*) FROM squares WHERE pool_id = $1 AND player_id = p.id AND claim_status = 'pending') as pending_count
        FROM players p
        JOIN pool_players pp ON p.id = pp.player_id
        WHERE pp.pool_id = $1
@@ -27,6 +28,37 @@ router.get('/', async (req: AuthRequest, res) => {
   } catch (error) {
     console.error('List players error:', error);
     res.status(500).json({ error: 'Failed to list players' });
+  }
+});
+
+// Get invite links for all players in pool
+router.get('/invite-links', async (req: AuthRequest, res) => {
+  try {
+    const poolId = req.params.id;
+
+    // Verify admin owns the pool
+    const poolCheck = await query(
+      'SELECT id FROM pools WHERE id = $1 AND admin_id = $2',
+      [poolId, req.admin!.id]
+    );
+    if (poolCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Pool not found' });
+    }
+
+    const result = await query(
+      `SELECT p.id, p.name, p.phone, p.email, p.auth_token, pp.paid, pp.payment_status,
+        (SELECT COUNT(*) FROM squares WHERE pool_id = $1 AND player_id = p.id AND claim_status = 'claimed') as square_count
+       FROM players p
+       JOIN pool_players pp ON p.id = pp.player_id
+       WHERE pp.pool_id = $1
+       ORDER BY p.name`,
+      [poolId]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get invite links error:', error);
+    res.status(500).json({ error: 'Failed to get invite links' });
   }
 });
 
@@ -207,18 +239,28 @@ router.patch('/:playerId', validate(schemas.updatePaymentStatus), async (req: Au
   }
 });
 
-// Mark player as deadbeat (releases all their squares)
+// Mark player as deadbeat (releases all their claimed and pending squares)
 router.post('/:playerId/deadbeat', async (req: AuthRequest, res) => {
   try {
     const poolId = req.params.id;
     const playerId = req.params.playerId;
 
     await withTransaction(async (client) => {
-      // Release all squares
-      const released = await client.query(
-        `UPDATE squares SET player_id = NULL, released_at = NOW()
-         WHERE pool_id = $1 AND player_id = $2
-         RETURNING id`,
+      // Get counts before releasing
+      const countResult = await client.query(
+        `SELECT
+          COUNT(*) FILTER (WHERE claim_status = 'claimed') as claimed_count,
+          COUNT(*) FILTER (WHERE claim_status = 'pending') as pending_count
+         FROM squares WHERE pool_id = $1 AND player_id = $2`,
+        [poolId, playerId]
+      );
+      const claimed = parseInt(countResult.rows[0].claimed_count) || 0;
+      const pending = parseInt(countResult.rows[0].pending_count) || 0;
+
+      // Release all squares (both claimed and pending)
+      await client.query(
+        `UPDATE squares SET player_id = NULL, claim_status = 'available', released_at = NOW(), requested_at = NULL
+         WHERE pool_id = $1 AND player_id = $2`,
         [poolId, playerId]
       );
 
@@ -234,7 +276,7 @@ router.post('/:playerId/deadbeat', async (req: AuthRequest, res) => {
         actor_type: 'admin',
         actor_id: req.admin!.id,
         action: 'player_marked_deadbeat',
-        detail: { player_id: playerId, squares_released: released.rowCount },
+        detail: { player_id: playerId, claimed_released: claimed, pending_released: pending },
       });
     });
 
@@ -279,9 +321,21 @@ router.delete('/:playerId', async (req: AuthRequest, res) => {
     const playerId = req.params.playerId;
 
     await withTransaction(async (client) => {
-      // Release squares
+      // Get counts before releasing
+      const countResult = await client.query(
+        `SELECT
+          COUNT(*) FILTER (WHERE claim_status = 'claimed') as claimed_count,
+          COUNT(*) FILTER (WHERE claim_status = 'pending') as pending_count
+         FROM squares WHERE pool_id = $1 AND player_id = $2`,
+        [poolId, playerId]
+      );
+      const claimed = parseInt(countResult.rows[0].claimed_count) || 0;
+      const pending = parseInt(countResult.rows[0].pending_count) || 0;
+
+      // Release squares (set claim_status to available)
       await client.query(
-        'UPDATE squares SET player_id = NULL WHERE pool_id = $1 AND player_id = $2',
+        `UPDATE squares SET player_id = NULL, claim_status = 'available', released_at = NOW(), requested_at = NULL
+         WHERE pool_id = $1 AND player_id = $2`,
         [poolId, playerId]
       );
 
@@ -296,7 +350,7 @@ router.delete('/:playerId', async (req: AuthRequest, res) => {
         actor_type: 'admin',
         actor_id: req.admin!.id,
         action: 'player_removed',
-        detail: { player_id: playerId },
+        detail: { player_id: playerId, claimed_released: claimed, pending_released: pending },
       });
     });
 

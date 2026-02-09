@@ -5,8 +5,37 @@ import { query, withTransaction } from '../db/index.js';
 import { validate, schemas } from '../middleware/validation.js';
 import { generateToken, authenticateAdmin, AuthRequest } from '../middleware/auth.js';
 import { Admin, Player } from '../types/index.js';
+import { config } from '../config.js';
 
 const router = Router();
+
+// Check if site password is required
+router.get('/site-status', (req, res) => {
+  res.json({
+    passwordRequired: !!config.sitePassword,
+  });
+});
+
+// Verify site password
+router.post('/verify-site-password', (req, res) => {
+  const { password } = req.body;
+
+  if (!config.sitePassword) {
+    // No site password configured, allow access
+    return res.json({ valid: true });
+  }
+
+  if (password === config.sitePassword) {
+    // Generate a simple token for the session (just a hash of the password + timestamp)
+    const sessionToken = crypto
+      .createHash('sha256')
+      .update(config.sitePassword + Date.now().toString())
+      .digest('hex');
+    return res.json({ valid: true, sessionToken });
+  }
+
+  return res.status(401).json({ valid: false, error: 'Invalid password' });
+});
 
 // Register admin
 router.post('/register', validate(schemas.register), async (req, res) => {

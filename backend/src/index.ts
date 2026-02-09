@@ -11,11 +11,37 @@ import playersRoutes from './routes/players.js';
 import scoresRoutes from './routes/scores.js';
 import playerPortalRoutes from './routes/playerPortal.js';
 import gamesRoutes from './routes/games.js';
+import paymentsRoutes from './routes/payments.js';
+import groupsRoutes from './routes/groups.js';
+import allPlayersRoutes from './routes/allPlayers.js';
 
 const app = express();
 
-// Middleware
-app.use(cors({ origin: config.frontendUrl }));
+// Middleware - CORS for both local dev and production
+const allowedOrigins = [
+  config.frontendUrl,
+  'http://localhost:5173',
+  'http://localhost:3000',
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      // In production, be strict. In dev, allow any localhost
+      if (process.env.NODE_ENV !== 'production' && origin.includes('localhost')) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    }
+  },
+  credentials: true,
+}));
 app.use(express.json());
 
 // Health check
@@ -32,6 +58,9 @@ app.use('/api/pools/:id/players', playersRoutes);
 app.use('/api/pools/:id/scores', scoresRoutes);
 app.use('/api/p', playerPortalRoutes);
 app.use('/api/games', gamesRoutes);
+app.use('/api/payments', paymentsRoutes);
+app.use('/api/groups', groupsRoutes);
+app.use('/api/players', allPlayersRoutes);
 
 // Error handler
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

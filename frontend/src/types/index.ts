@@ -3,6 +3,7 @@ export type PayoutStructure = 'standard' | 'heavy_final' | 'halftime_final' | 'r
 export type OTRule = 'include_final' | 'separate' | 'none';
 export type PoolStatus = 'open' | 'locked' | 'in_progress' | 'final' | 'cancelled' | 'suspended';
 export type PaymentStatus = 'pending' | 'confirmed' | 'deadbeat';
+export type ClaimStatus = 'available' | 'pending' | 'claimed';
 
 export interface Admin {
   id: string;
@@ -21,6 +22,7 @@ export interface Player {
   auth_token?: string;
   banned: boolean;
   square_count?: number;
+  pending_count?: number;
   paid?: boolean;
   payment_status?: PaymentStatus;
 }
@@ -39,15 +41,18 @@ export interface Pool {
   payout_structure: PayoutStructure;
   tip_pct: number;
   max_per_player: number;
+  approval_threshold: number;
   ot_rule: OTRule;
   col_digits: number[] | null;
   row_digits: number[] | null;
   status: PoolStatus;
   locked_at: string | null;
+  external_game_id: string | null;
   created_at: string;
   claimed_count?: number;
   player_count?: number;
   pending_count?: number;
+  pending_squares_count?: number;
 }
 
 export interface GridCell {
@@ -57,6 +62,16 @@ export interface GridCell {
   player_name?: string;
   paid?: boolean;
   payment_status?: PaymentStatus;
+  claim_status?: ClaimStatus;
+  requested_at?: string;
+}
+
+export interface PendingSquareRequest {
+  row: number;
+  col: number;
+  player_id: string;
+  player_name: string;
+  requested_at: string;
 }
 
 export interface Score {
@@ -86,6 +101,7 @@ export interface PoolDetail extends Pool {
   players: Player[];
   scores: Score[];
   winners: Winner[];
+  pendingRequests: PendingSquareRequest[];
 }
 
 export const SPORTS_CONFIG = {

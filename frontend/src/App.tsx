@@ -1,11 +1,15 @@
 import { useState, useEffect, createContext, useContext } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Admin } from './types';
 import { auth } from './api/client';
+import SiteGate from './components/SiteGate';
 import Login from './pages/Login';
 import Pools from './pages/Pools';
 import PoolDetail from './pages/PoolDetail';
 import CreatePool from './pages/CreatePool';
+import Groups from './pages/Groups';
+import Players from './pages/Players';
+import PlayerPortal from './pages/PlayerPortal';
 
 interface AuthContextType {
   admin: Admin | null;
@@ -80,35 +84,64 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Pools />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/pools/new"
-            element={
-              <ProtectedRoute>
-                <CreatePool />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/pools/:id"
-            element={
-              <ProtectedRoute>
-                <PoolDetail />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </AuthProvider>
+      <Routes>
+        {/* Player Portal - public route via magic link (no site gate) */}
+        <Route path="/p/:token" element={<PlayerPortal />} />
+
+        {/* Admin routes - protected by site gate and auth */}
+        <Route
+          path="/*"
+          element={
+            <SiteGate>
+              <AuthProvider>
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  <Route
+                    path="/"
+                    element={
+                      <ProtectedRoute>
+                        <Pools />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/pools/new"
+                    element={
+                      <ProtectedRoute>
+                        <CreatePool />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/pools/:id"
+                    element={
+                      <ProtectedRoute>
+                        <PoolDetail />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/groups"
+                    element={
+                      <ProtectedRoute>
+                        <Groups />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/players"
+                    element={
+                      <ProtectedRoute>
+                        <Players />
+                      </ProtectedRoute>
+                    }
+                  />
+                </Routes>
+              </AuthProvider>
+            </SiteGate>
+          }
+        />
+      </Routes>
     </BrowserRouter>
   );
 }

@@ -30,6 +30,34 @@ export default function Pools() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
+            onClick={() => navigate('/players')}
+            style={{
+              background: 'transparent',
+              color: 'var(--muted)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              padding: '8px 12px',
+              fontSize: 12,
+              fontFamily: 'var(--font-mono)',
+            }}
+          >
+            Players
+          </button>
+          <button
+            onClick={() => navigate('/groups')}
+            style={{
+              background: 'transparent',
+              color: 'var(--muted)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              padding: '8px 12px',
+              fontSize: 12,
+              fontFamily: 'var(--font-mono)',
+            }}
+          >
+            Groups
+          </button>
+          <button
             onClick={() => navigate('/pools/new')}
             style={{
               background: 'var(--green)',

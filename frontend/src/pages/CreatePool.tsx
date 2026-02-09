@@ -19,6 +19,7 @@ export default function CreatePool() {
     tip_pct: 10,
     max_per_player: 10,
     ot_rule: 'include_final',
+    external_game_id: '' as string | undefined,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -73,6 +74,7 @@ export default function CreatePool() {
       game_time: game.time || '',
       game_label: game.label || '',
       name: `${game.away} vs ${game.home}`,
+      external_game_id: game.id, // Link to ESPN game for live score sync
     });
     setStep(2);
   };
@@ -519,7 +521,7 @@ export default function CreatePool() {
                   {form.away_team} vs {form.home_team}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-                  {form.game_date || 'TBD'} • {sc.periods.length} {sc.periods.length === 1 ? 'period' : 'periods'}
+                  {form.game_date || 'TBD'} • {sc.periods.length} periods
                 </div>
               </div>
             </div>

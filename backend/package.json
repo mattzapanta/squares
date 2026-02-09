@@ -1,6 +1,7 @@
 {
   "name": "squareshq-backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "SquaresHQ API Server",
   "main": "dist/index.js",
   "scripts": {

@@ -3,6 +3,7 @@ import { query } from '../db/index.js';
 import { authenticatePlayer, AuthRequest } from '../middleware/auth.js';
 import { claimSquare, getGridWithPlayers } from '../services/gridService.js';
 import { Player, Pool } from '../types/index.js';
+import { sendSquareClaimedNotification } from '../services/notificationService.js';
 
 const router = Router();
 
@@ -121,7 +122,16 @@ router.post('/:token/pools/:poolId/claim', authenticatePlayer, async (req: AuthR
       return res.status(400).json({ error: result.error });
     }
 
-    res.json({ message: 'Square claimed', row, col });
+    // Send notification to player (async, don't wait)
+    sendSquareClaimedNotification(player.id, poolId, [{ row, col }], result.status!)
+      .catch(err => console.error('[Notification] Failed to send claim notification:', err));
+
+    res.json({
+      message: result.status === 'pending' ? 'Square request submitted for approval' : 'Square claimed',
+      row,
+      col,
+      status: result.status,
+    });
   } catch (error) {
     console.error('Player claim error:', error);
     res.status(500).json({ error: 'Failed to claim square' });

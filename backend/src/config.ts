@@ -6,9 +6,11 @@ export const config = {
   database: {
     url: process.env.DATABASE_URL || 'postgresql://localhost:5432/squareshq',
   },
+  // Site password - if set, users must enter this before accessing the app
+  sitePassword: process.env.SITE_PASSWORD || '',
   jwt: {
     secret: process.env.JWT_SECRET || 'dev-secret-change-in-production',
-    expiresIn: '7d',
+    expiresIn: '7d' as const,
   },
   resend: {
     apiKey: process.env.RESEND_API_KEY || '',
@@ -20,6 +22,17 @@ export const config = {
   },
   ballDontLie: {
     apiKey: process.env.BALLDONTLIE_API_KEY || '',
+  },
+  // SMS - Telnyx (cheapest at $0.004/msg) or Twilio ($0.0079/msg)
+  sms: {
+    provider: (process.env.SMS_PROVIDER || 'telnyx') as 'telnyx' | 'twilio',
+    // Telnyx config
+    telnyxApiKey: process.env.TELNYX_API_KEY || '',
+    telnyxPhoneNumber: process.env.TELNYX_PHONE_NUMBER || '',
+    // Twilio config (fallback)
+    twilioAccountSid: process.env.TWILIO_ACCOUNT_SID || '',
+    twilioAuthToken: process.env.TWILIO_AUTH_TOKEN || '',
+    twilioPhoneNumber: process.env.TWILIO_PHONE_NUMBER || '',
   },
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
   baseUrl: process.env.BASE_URL || 'http://localhost:3000',
