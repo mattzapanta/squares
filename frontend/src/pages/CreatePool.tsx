@@ -137,30 +137,28 @@ export default function CreatePool() {
   // Check if payouts are valid
   const payoutsValid = Math.abs(totalPercentage - 100) < 0.01;
 
-  // Update custom payout and auto-balance remaining
+  // Update custom payout and auto-balance all other fields evenly
   const updatePayoutWithAutoBalance = (key: string, newPercent: number) => {
     setCustomPayouts(prev => {
-      const updated = { ...prev, [key]: Math.max(0, Math.min(100, newPercent)) };
+      const clampedPercent = Math.max(0, Math.min(100, newPercent));
+      const remaining = Math.max(0, 100 - clampedPercent);
 
-      // Calculate total of all OTHER fields (excluding the one being edited)
-      const otherKeys = Object.keys(updated).filter(k => k !== key);
-      const otherTotal = otherKeys.reduce((sum, k) => sum + updated[k], 0);
+      // Get all other keys
+      const otherKeys = Object.keys(prev).filter(k => k !== key);
 
-      // Calculate how much is left for the last field (not the one being edited)
-      const remaining = 100 - updated[key];
+      // Distribute remaining evenly among other fields
+      const evenSplit = otherKeys.length > 0 ? Math.round((remaining / otherKeys.length) * 100) / 100 : 0;
 
-      // If there's a mismatch, auto-adjust the last quarter (or previous if editing last)
-      if (Math.abs(otherTotal - remaining) > 0.01 && otherKeys.length > 0) {
-        // Find the last key that's not being edited
-        const lastKey = `q${periodLabels.length}`;
-        const adjustKey = key === lastKey ? `q${periodLabels.length - 1}` : lastKey;
+      const updated: Record<string, number> = { [key]: clampedPercent };
+      otherKeys.forEach(k => {
+        updated[k] = evenSplit;
+      });
 
-        // Calculate what the adjust key needs to be
-        const adjustKeyOthers = otherKeys.filter(k => k !== adjustKey);
-        const adjustKeyOthersTotal = adjustKeyOthers.reduce((sum, k) => sum + updated[k], 0);
-        const adjustValue = Math.max(0, 100 - updated[key] - adjustKeyOthersTotal);
-
-        updated[adjustKey] = Math.round(adjustValue * 100) / 100;
+      // Fix rounding to ensure exactly 100%
+      const total = Object.values(updated).reduce((sum, v) => sum + v, 0);
+      if (Math.abs(total - 100) > 0.01 && otherKeys.length > 0) {
+        const lastOther = otherKeys[otherKeys.length - 1];
+        updated[lastOther] = Math.round((updated[lastOther] + (100 - total)) * 100) / 100;
       }
 
       return updated;
