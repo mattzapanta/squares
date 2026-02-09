@@ -1298,6 +1298,27 @@ export default function PoolDetail() {
                     >
                       {p.paid ? 'Mark Unpaid' : 'Mark Paid'}
                     </button>
+                    <button
+                      onClick={async () => {
+                        const confirmed = confirm(`Remove ${p.name} from this pool? Their squares will be released.${p.paid ? ' Any payments will be refunded to their wallet.' : ''}`);
+                        if (!confirmed) return;
+                        try {
+                          const result = await playersApi.remove(pool.id, p.id);
+                          const res = result as any;
+                          if (res.refundAmount && res.refundAmount > 0) {
+                            alert(`${p.name} removed. $${res.refundAmount} refunded to their wallet.`);
+                          } else {
+                            alert(`${p.name} removed from pool.`);
+                          }
+                          loadPool();
+                        } catch (error) {
+                          alert(error instanceof Error ? error.message : 'Failed to remove player');
+                        }
+                      }}
+                      style={{ background: 'none', border: '1px solid var(--red)', borderRadius: 6, padding: '4px 8px', fontSize: 10, color: 'var(--red)', fontFamily: 'var(--font-mono)' }}
+                    >
+                      Remove
+                    </button>
                   </div>
                 </div>
               ))}

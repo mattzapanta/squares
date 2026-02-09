@@ -115,6 +115,9 @@ export default function PlayerPortal() {
   const [claiming, setClaiming] = useState(false);
   const [releasing, setReleasing] = useState<string | null>(null); // "row-col" of square being released
   const [claimMessage, setClaimMessage] = useState<{ success: boolean; text: string } | null>(null);
+  const [showLedger, setShowLedger] = useState(false);
+  const [ledgerEntries, setLedgerEntries] = useState<{ id: string; type: string; amount: number; description: string; pool_name: string; created_at: string }[]>([]);
+  const [loadingLedger, setLoadingLedger] = useState(false);
 
   // Load player data
   useEffect(() => {
@@ -188,6 +191,22 @@ export default function PlayerPortal() {
     }
   };
 
+  const handleShowLedger = async () => {
+    if (!token) return;
+    setShowLedger(true);
+    setLoadingLedger(true);
+    try {
+      const res = await fetch(`${API_BASE}/p/${token}/ledger`);
+      if (!res.ok) throw new Error('Failed to load ledger');
+      const data = await res.json();
+      setLedgerEntries(data.entries || []);
+    } catch (err) {
+      console.error('Failed to load ledger:', err);
+    } finally {
+      setLoadingLedger(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -245,8 +264,13 @@ export default function PlayerPortal() {
               Welcome, {player?.name}
             </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 10, color: 'var(--dim)', fontFamily: 'var(--font-mono)' }}>BALANCE</div>
+          <div
+            onClick={handleShowLedger}
+            style={{ textAlign: 'right', cursor: 'pointer', padding: '4px 8px', borderRadius: 8, transition: 'background 0.15s' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            <div style={{ fontSize: 10, color: 'var(--dim)', fontFamily: 'var(--font-mono)' }}>BALANCE ▼</div>
             <div style={{ fontSize: 18, fontWeight: 800, color: balance >= 0 ? 'var(--green)' : 'var(--red)', fontFamily: 'var(--font-mono)' }}>
               ${balance}
             </div>
@@ -554,6 +578,53 @@ export default function PlayerPortal() {
           </div>
         )}
       </div>
+
+      {/* Ledger Modal */}
+      {showLedger && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={() => setShowLedger(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, width: '100%', maxWidth: 500, maxHeight: '80vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 800, fontFamily: 'var(--font-mono)', margin: 0 }}>📒 Transaction History</h3>
+              <button onClick={() => setShowLedger(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18 }}>✕</button>
+            </div>
+
+            <div style={{ background: 'var(--bg)', borderRadius: 8, padding: 12, marginBottom: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 10, color: 'var(--dim)', fontFamily: 'var(--font-mono)' }}>CURRENT BALANCE</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: balance >= 0 ? 'var(--green)' : 'var(--red)', fontFamily: 'var(--font-mono)' }}>
+                ${balance}
+              </div>
+            </div>
+
+            {loadingLedger ? (
+              <div style={{ textAlign: 'center', padding: 20, color: 'var(--muted)' }}>Loading transactions...</div>
+            ) : ledgerEntries.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 20, color: 'var(--muted)' }}>No transactions yet.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {ledgerEntries.map(entry => (
+                  <div key={entry.id} style={{ background: 'var(--bg)', borderRadius: 8, padding: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600 }}>{entry.description}</div>
+                      <div style={{ fontSize: 10, color: 'var(--dim)', marginTop: 2 }}>
+                        {entry.pool_name && `${entry.pool_name} • `}
+                        {new Date(entry.created_at).toLocaleDateString()} {new Date(entry.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                    <div style={{
+                      fontSize: 14,
+                      fontWeight: 800,
+                      fontFamily: 'var(--font-mono)',
+                      color: entry.amount >= 0 ? 'var(--green)' : 'var(--red)',
+                    }}>
+                      {entry.amount >= 0 ? '+' : ''}${entry.amount}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
