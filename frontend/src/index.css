@@ -1,0 +1,56 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #07080C;
+  --surface: #0F1017;
+  --surface2: #161820;
+  --hover: #1C1E2A;
+  --border: #252738;
+  --green: #4ADE80;
+  --green-glow: rgba(74, 222, 128, 0.12);
+  --gold: #FBBF24;
+  --red: #EF4444;
+  --blue: #60A5FA;
+  --purple: #A78BFA;
+  --pink: #F472B6;
+  --orange: #FB923C;
+  --cyan: #22D3EE;
+  --text: #EEEEF4;
+  --muted: #8889A4;
+  --dim: #4A4B60;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: 'Inter', -apple-system, sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+}
+
+a {
+  color: var(--green);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+input, select, textarea, button {
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
