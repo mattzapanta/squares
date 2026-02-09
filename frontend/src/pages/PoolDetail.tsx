@@ -1011,9 +1011,9 @@ export default function PoolDetail() {
                           position: 'relative',
                         }}
                       >
-                        {cell ? (
+                        {cell?.player_id ? (
                           <span style={{ fontSize: 9, fontWeight: 800, color: isPendingApproval ? '#A78BFA' : isUnpaid ? 'var(--orange)' : color, fontFamily: 'var(--font-mono)' }}>
-                            {cell.player_name?.split(' ')[0].substring(0, 3).toUpperCase()}
+                            {cell.player_name?.split(' ')[0]?.substring(0, 3)?.toUpperCase()}
                           </span>
                         ) : (
                           <span style={{ fontSize: 10, color: 'var(--dim)' }}>+</span>

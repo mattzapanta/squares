@@ -469,7 +469,7 @@ export default function PlayerPortal() {
                         >
                           {cell.player_id ? (
                             <span style={{ fontSize: 8, fontWeight: 800, color: isMine ? 'var(--green)' : isPending ? '#A78BFA' : color, fontFamily: 'var(--font-mono)' }}>
-                              {isMine ? 'YOU' : cell.player_name?.split(' ')[0].substring(0, 3).toUpperCase()}
+                              {isMine ? 'YOU' : cell.player_name?.split(' ')[0]?.substring(0, 3)?.toUpperCase()}
                             </span>
                           ) : (
                             <span style={{ fontSize: 14, color: canClaim ? 'var(--green)' : 'var(--dim)' }}>
