@@ -249,10 +249,12 @@ export default function PlayerPortal() {
   // Player colors for grid
   const playerColors: Record<string, string> = {};
   const colors = ['#4ADE80', '#60A5FA', '#FBBF24', '#A78BFA', '#F472B6', '#FB923C', '#22D3EE', '#F87171', '#818CF8', '#A3E635'];
-  if (poolDetail) {
+  if (poolDetail && poolDetail.grid) {
     const uniquePlayers = new Set<string>();
-    poolDetail.grid.flat().forEach(cell => {
-      if (cell && cell.player_id) uniquePlayers.add(cell.player_id);
+    // Safely flatten and filter out null cells
+    const allCells = poolDetail.grid.flat().filter((cell): cell is NonNullable<typeof cell> => cell !== null && cell !== undefined);
+    allCells.forEach(cell => {
+      if (cell.player_id) uniquePlayers.add(cell.player_id);
     });
     Array.from(uniquePlayers).forEach((id, i) => {
       playerColors[id] = colors[i % colors.length];
