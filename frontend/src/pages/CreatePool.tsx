@@ -430,6 +430,38 @@ export default function CreatePool() {
             </div>
           </div>
 
+          {/* Payout Structure */}
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 10, fontFamily: 'var(--font-mono)' }}>
+              PAYOUT STRUCTURE
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[
+                { id: 'standard', name: 'Standard', desc: 'Equal split across all quarters (25% each)' },
+                { id: 'heavy_final', name: 'Heavy Final', desc: 'Q1-Q3: 10% each, Final: 70%' },
+                { id: 'halftime_final', name: 'Halftime/Final', desc: 'Halftime: 25%, Final: 75%' },
+                { id: 'reverse', name: 'Reverse', desc: 'Q1: 40%, Q2: 30%, Q3: 20%, Q4: 10%' },
+              ].map(p => (
+                <div
+                  key={p.id}
+                  onClick={() => setForm({ ...form, payout_structure: p.id })}
+                  style={{
+                    background: form.payout_structure === p.id ? 'rgba(74, 222, 128, 0.1)' : 'var(--bg)',
+                    border: `1px solid ${form.payout_structure === p.id ? 'var(--green)' : 'var(--border)'}`,
+                    borderRadius: 8,
+                    padding: '10px 12px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ fontWeight: 700, fontSize: 13, color: form.payout_structure === p.id ? 'var(--green)' : 'var(--text)' }}>
+                    {p.name}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--dim)', marginTop: 2 }}>{p.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Tip */}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 10, fontFamily: 'var(--font-mono)' }}>
