@@ -244,7 +244,7 @@ export default function PlayerPortal() {
   if (poolDetail) {
     const uniquePlayers = new Set<string>();
     poolDetail.grid.flat().forEach(cell => {
-      if (cell.player_id) uniquePlayers.add(cell.player_id);
+      if (cell && cell.player_id) uniquePlayers.add(cell.player_id);
     });
     Array.from(uniquePlayers).forEach((id, i) => {
       playerColors[id] = colors[i % colors.length];
@@ -427,7 +427,9 @@ export default function PlayerPortal() {
                   </div>
                   {/* Grid cells */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 38px)', gap: 2, background: 'var(--border)', padding: 2, borderRadius: 8 }}>
-                    {poolDetail.grid.map((row, r) => row.map((cell, c) => {
+                    {poolDetail.grid.map((row, r) => row.map((cellData, c) => {
+                      // Handle null cells (unclaimed squares)
+                      const cell = cellData || { player_id: null, player_name: null, claim_status: 'available' as const };
                       const isMine = poolDetail.mySquares.some(s => s.row_idx === r && s.col_idx === c);
                       const isAvailable = !cell.player_id && cell.claim_status === 'available';
                       const isPending = cell.claim_status === 'pending';
