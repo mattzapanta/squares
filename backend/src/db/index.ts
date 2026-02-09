@@ -5,6 +5,7 @@ const { Pool } = pg;
 
 export const pool = new Pool({
   connectionString: config.database.url,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 });
 
 // Helper for transactions
