@@ -137,43 +137,38 @@ export default function CreatePool() {
   // Check if payouts are valid
   const payoutsValid = Math.abs(totalPercentage - 100) < 0.01;
 
-  // Update custom payout and auto-balance all other fields evenly
-  const updatePayoutWithAutoBalance = (key: string, newPercent: number) => {
-    setCustomPayouts(prev => {
-      const clampedPercent = Math.max(0, Math.min(100, newPercent));
-      const remaining = Math.max(0, 100 - clampedPercent);
-
-      // Get all other keys
-      const otherKeys = Object.keys(prev).filter(k => k !== key);
-
-      // Distribute remaining evenly among other fields
-      const evenSplit = otherKeys.length > 0 ? Math.round((remaining / otherKeys.length) * 100) / 100 : 0;
-
-      const updated: Record<string, number> = { [key]: clampedPercent };
-      otherKeys.forEach(k => {
-        updated[k] = evenSplit;
-      });
-
-      // Fix rounding to ensure exactly 100%
-      const total = Object.values(updated).reduce((sum, v) => sum + v, 0);
-      if (Math.abs(total - 100) > 0.01 && otherKeys.length > 0) {
-        const lastOther = otherKeys[otherKeys.length - 1];
-        updated[lastOther] = Math.round((updated[lastOther] + (100 - total)) * 100) / 100;
-      }
-
-      return updated;
-    });
-  };
-
-  // Update custom payout from dollar amount
+  // Simple update - no auto-balancing, user has full control
   const updatePayoutFromDollar = (key: string, dollars: number) => {
     const percentage = Math.round((dollars / poolTotal) * 100 * 100) / 100;
-    updatePayoutWithAutoBalance(key, percentage);
+    setCustomPayouts(prev => ({ ...prev, [key]: Math.max(0, percentage) }));
   };
 
-  // Update custom payout from percentage
   const updatePayoutFromPercent = (key: string, percent: number) => {
-    updatePayoutWithAutoBalance(key, percent);
+    setCustomPayouts(prev => ({ ...prev, [key]: Math.max(0, Math.min(100, percent)) }));
+  };
+
+  // Balance: distribute evenly across all fields
+  const balancePayouts = () => {
+    const numPeriods = periodLabels.length;
+    const evenSplit = Math.floor(100 / numPeriods);
+    const remainder = 100 - (evenSplit * numPeriods);
+
+    const balanced: Record<string, number> = {};
+    periodLabels.forEach((_, idx) => {
+      const key = `q${idx + 1}`;
+      balanced[key] = idx === numPeriods - 1 ? evenSplit + remainder : evenSplit;
+    });
+    setCustomPayouts(balanced);
+  };
+
+  // Auto-fill remaining to last period (Final)
+  const autoFillLast = () => {
+    const lastKey = `q${periodLabels.length}`;
+    const otherTotal = Object.entries(customPayouts)
+      .filter(([k]) => k !== lastKey)
+      .reduce((sum, [, v]) => sum + v, 0);
+    const remaining = Math.max(0, 100 - otherTotal);
+    setCustomPayouts(prev => ({ ...prev, [lastKey]: remaining }));
   };
 
   // Reset custom payouts when switching to custom
@@ -711,29 +706,68 @@ export default function CreatePool() {
                   })}
                 </div>
 
-                {/* Total / Remaining */}
+                {/* Total / Remaining + Action Buttons */}
                 <div style={{
                   marginTop: 12,
                   paddingTop: 12,
                   borderTop: '1px solid var(--border)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
                 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: payoutsValid ? 'var(--green)' : 'var(--red)' }}>
-                    Total: {totalPercentage}%
-                  </div>
-                  {!payoutsValid && (
-                    <div style={{ fontSize: 11, color: 'var(--red)' }}>
-                      {remainingPercentage > 0
-                        ? `${remainingPercentage}% remaining ($${Math.round(poolTotal * remainingPercentage / 100).toLocaleString()})`
-                        : `${Math.abs(remainingPercentage)}% over limit`
-                      }
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: payoutsValid ? 'var(--green)' : 'var(--red)' }}>
+                      Total: {totalPercentage}%
                     </div>
-                  )}
-                  {payoutsValid && (
-                    <div style={{ fontSize: 11, color: 'var(--green)' }}>✓ Valid</div>
-                  )}
+                    {!payoutsValid && (
+                      <div style={{ fontSize: 11, color: 'var(--red)' }}>
+                        {remainingPercentage > 0
+                          ? `${remainingPercentage}% remaining`
+                          : `${Math.abs(remainingPercentage)}% over`
+                        }
+                      </div>
+                    )}
+                    {payoutsValid && (
+                      <div style={{ fontSize: 11, color: 'var(--green)' }}>✓ Valid</div>
+                    )}
+                  </div>
+
+                  {/* Action buttons */}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={balancePayouts}
+                      style={{
+                        flex: 1,
+                        padding: '8px 12px',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        borderRadius: 6,
+                        border: '1px solid var(--border)',
+                        background: 'var(--surface)',
+                        color: 'var(--text)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Split Even
+                    </button>
+                    {!payoutsValid && remainingPercentage > 0 && (
+                      <button
+                        type="button"
+                        onClick={autoFillLast}
+                        style={{
+                          flex: 1,
+                          padding: '8px 12px',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          borderRadius: 6,
+                          border: 'none',
+                          background: 'var(--green)',
+                          color: 'var(--bg)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Add {remainingPercentage}% to Final
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
