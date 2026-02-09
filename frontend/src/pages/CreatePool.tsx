@@ -119,7 +119,7 @@ export default function CreatePool() {
     const preset = PAYOUT_PRESETS[form.payout_structure] || PAYOUT_PRESETS.standard;
     // Map preset to period keys based on sport
     const result: Record<string, number> = {};
-    periodLabels.forEach((label, idx) => {
+    periodLabels.forEach((_, idx) => {
       const key = `q${idx + 1}`;
       result[key] = preset[key] || (100 / periodLabels.length);
     });
