@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../App';
 import { PoolDetail as PoolDetailType, SPORTS_CONFIG, GridCell } from '../types';
-import { pools as poolsApi, squares, players as playersApi, scores as scoresApi, payments, SearchedPlayer, PlayerPaymentSummary, LiveScoreData, CurrentWinner, allPlayers, PlayerWalletBalance, PlayerInviteLink } from '../api/client';
+import { pools as poolsApi, squares, players as playersApi, scores as scoresApi, payments, SearchedPlayer, PlayerPaymentSummary, LiveScoreData, CurrentWinner, PlayerWalletBalance, PlayerInviteLink } from '../api/client';
 
 // Cell Assignment Modal with inline player creation
 function CellAssignmentModal({
@@ -15,7 +15,7 @@ function CellAssignmentModal({
   onReject,
   onRelease,
   onAssign,
-  onAddPlayer,
+  onAddPlayer: _onAddPlayer,
   onReload,
 }: {
   selectedCell: { r: number; c: number };
@@ -27,7 +27,7 @@ function CellAssignmentModal({
   onReject: (row: number, col: number) => void;
   onRelease: () => void;
   onAssign: (playerId: string) => void;
-  onAddPlayer: () => Promise<void>;
+  onAddPlayer?: () => Promise<void>;
   onReload: () => void;
 }) {
   const [showNewPlayer, setShowNewPlayer] = useState(false);
@@ -239,7 +239,7 @@ export default function PoolDetail() {
   const [autoSync, setAutoSync] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Payment modal state
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -663,7 +663,7 @@ export default function PoolDetail() {
     }
   };
 
-  const copyInviteLink = (token: string, playerName: string) => {
+  const copyInviteLink = (token: string, _playerName: string) => {
     const baseUrl = window.location.origin;
     const link = `${baseUrl}/p/${token}?pool=${pool.id}`;
     navigator.clipboard.writeText(link).then(() => {
