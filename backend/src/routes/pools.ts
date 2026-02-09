@@ -93,7 +93,8 @@ router.post('/', validate(schemas.createPool), async (req: AuthRequest, res) => 
     res.status(201).json(pool);
   } catch (error) {
     console.error('Create pool error:', error);
-    res.status(500).json({ error: 'Failed to create pool' });
+    const err = error as Error;
+    res.status(500).json({ error: 'Failed to create pool', message: err.message });
   }
 });
 
