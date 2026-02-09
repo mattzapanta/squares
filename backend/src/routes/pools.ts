@@ -61,8 +61,8 @@ router.post('/', validate(schemas.createPool), async (req: AuthRequest, res) => 
 
       const pool = result.rows[0];
 
-      // Initialize the 10x10 grid
-      await initializeGrid(pool.id);
+      // Initialize the 10x10 grid (pass client for transaction)
+      await initializeGrid(pool.id, client);
 
       // Auto-add admin as a player in their own pool
       const admin = req.admin as any;
@@ -81,7 +81,7 @@ router.post('/', validate(schemas.createPool), async (req: AuthRequest, res) => 
         actor_id: req.admin!.id,
         action: 'pool_created',
         detail: { name: pool.name, sport: pool.sport, denomination: pool.denomination },
-      });
+      }, client);
 
       return pool;
     });

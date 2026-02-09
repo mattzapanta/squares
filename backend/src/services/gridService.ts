@@ -2,9 +2,10 @@ import { query, withTransaction } from '../db/index.js';
 import { Square, Pool } from '../types/index.js';
 import { logAudit } from './auditService.js';
 import crypto from 'crypto';
+import { PoolClient } from 'pg';
 
 // Initialize empty 10x10 grid for a pool
-export async function initializeGrid(poolId: string): Promise<void> {
+export async function initializeGrid(poolId: string, client?: PoolClient): Promise<void> {
   const values: string[] = [];
   const params: (string | number)[] = [];
   let paramIdx = 1;
@@ -16,10 +17,13 @@ export async function initializeGrid(poolId: string): Promise<void> {
     }
   }
 
-  await query(
-    `INSERT INTO squares (pool_id, row_idx, col_idx) VALUES ${values.join(', ')}`,
-    params
-  );
+  const sql = `INSERT INTO squares (pool_id, row_idx, col_idx) VALUES ${values.join(', ')}`;
+
+  if (client) {
+    await client.query(sql, params);
+  } else {
+    await query(sql, params);
+  }
 }
 
 // Get grid for a pool
@@ -108,10 +112,10 @@ export async function claimSquare(
     // Try to claim the square
     const updateResult = await client.query(
       `UPDATE squares
-       SET player_id = $1, claimed_at = NOW(), is_admin_override = $4
-       WHERE pool_id = $2 AND row_idx = $3 AND col_idx = $5 AND player_id IS NULL
+       SET player_id = $1, claimed_at = NOW(), is_admin_override = $5
+       WHERE pool_id = $2 AND row_idx = $3 AND col_idx = $4 AND player_id IS NULL
        RETURNING *`,
-      [playerId, poolId, row, col, pool.status !== 'open', col]
+      [playerId, poolId, row, col, pool.status !== 'open']
     );
 
     if (updateResult.rows.length === 0) {
@@ -129,7 +133,7 @@ export async function claimSquare(
       actor_id: actorId,
       action: 'square_claimed',
       detail: { row, col, player_id: playerId, player_name: playerName },
-    });
+    }, client);
 
     return { success: true };
   });
@@ -143,12 +147,10 @@ export async function releaseSquare(
   adminId: string
 ): Promise<{ success: boolean; error?: string; previousPlayer?: string }> {
   return withTransaction(async (client) => {
-    // Get current square owner
+    // Get current square owner (lock squares row only, join player name separately)
     const squareResult = await client.query(
-      `SELECT s.*, p.name as player_name
-       FROM squares s
-       LEFT JOIN players p ON s.player_id = p.id
-       WHERE s.pool_id = $1 AND s.row_idx = $2 AND s.col_idx = $3
+      `SELECT * FROM squares
+       WHERE pool_id = $1 AND row_idx = $2 AND col_idx = $3
        FOR UPDATE`,
       [poolId, row, col]
     );
@@ -162,7 +164,9 @@ export async function releaseSquare(
       return { success: false, error: 'Square is not claimed' };
     }
 
-    const previousPlayer = square.player_name;
+    // Get player name
+    const playerResult = await client.query('SELECT name FROM players WHERE id = $1', [square.player_id]);
+    const previousPlayer = playerResult.rows[0]?.name || 'Unknown';
 
     // Check pool status for override flag
     const poolResult = await client.query('SELECT status FROM pools WHERE id = $1', [poolId]);
@@ -182,7 +186,7 @@ export async function releaseSquare(
       actor_id: adminId,
       action: 'square_released',
       detail: { row, col, previous_player: previousPlayer },
-    });
+    }, client);
 
     return { success: true, previousPlayer };
   });
@@ -223,7 +227,7 @@ export async function lockGrid(poolId: string, adminId: string): Promise<{ succe
       actor_id: adminId,
       action: 'grid_locked',
       detail: { col_digits: colDigits, row_digits: rowDigits },
-    });
+    }, client);
 
     return { success: true };
   });
@@ -268,7 +272,7 @@ export async function unlockGrid(poolId: string, adminId: string): Promise<{ suc
       actor_id: adminId,
       action: 'grid_unlocked',
       detail: { note: 'Digits cleared, scores reset' },
-    });
+    }, client);
 
     return { success: true };
   });
