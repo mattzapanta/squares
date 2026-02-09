@@ -226,7 +226,7 @@ export default function PoolDetail() {
   const { admin } = useAuth();
   const [pool, setPool] = useState<PoolDetailType | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'grid' | 'players' | 'audit'>('grid');
+  const [tab, setTab] = useState<'grid' | 'players' | 'audit' | 'settings'>('grid');
   const [selectedCell, setSelectedCell] = useState<{ r: number; c: number } | null>(null);
   const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [newPlayer, setNewPlayer] = useState({ name: '', phone: '', email: '' });
@@ -252,6 +252,16 @@ export default function PoolDetail() {
   const [paymentPlayerSummary, setPaymentPlayerSummary] = useState<PlayerPaymentSummary | null>(null);
   const [paymentWalletBalance, setPaymentWalletBalance] = useState<PlayerWalletBalance | null>(null);
   const [useCredit, setUseCredit] = useState<string>(''); // Amount of credit to use
+
+  // Settings state
+  const [settingsDenomination, setSettingsDenomination] = useState<number>(0);
+  const [settingsMaxPerPlayer, setSettingsMaxPerPlayer] = useState<number>(10);
+  const [settingsTipPct, setSettingsTipPct] = useState<number>(10);
+  const [settingsPayoutStructure, setSettingsPayoutStructure] = useState<string>('standard');
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState<{ success: boolean; text: string } | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentResult, setPaymentResult] = useState<{ success: boolean; message: string } | null>(null);
 
@@ -269,6 +279,11 @@ export default function PoolDetail() {
     try {
       const data = await poolsApi.get(id);
       setPool(data);
+      // Initialize settings state
+      setSettingsDenomination(data.denomination);
+      setSettingsMaxPerPlayer(data.max_per_player);
+      setSettingsTipPct(data.tip_pct);
+      setSettingsPayoutStructure(data.payout_structure);
     } catch (error) {
       console.error('Failed to load pool:', error);
     } finally {
@@ -807,6 +822,7 @@ export default function PoolDetail() {
         {[
           { id: 'grid', label: 'GRID' },
           { id: 'players', label: `PLAYERS (${pool.players.length})` },
+          { id: 'settings', label: '⚙️ SETTINGS' },
         ].map(t => (
           <button
             key={t.id}
@@ -1709,6 +1725,231 @@ export default function PoolDetail() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Settings Tab */}
+      {tab === 'settings' && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 20 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 800, fontFamily: 'var(--font-mono)', marginBottom: 20 }}>⚙️ Pool Settings</h3>
+
+          {settingsMessage && (
+            <div style={{
+              padding: 12,
+              borderRadius: 8,
+              marginBottom: 16,
+              background: settingsMessage.success ? 'rgba(74, 222, 128, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+              border: `1px solid ${settingsMessage.success ? 'var(--green)' : 'var(--red)'}`,
+              color: settingsMessage.success ? 'var(--green)' : 'var(--red)',
+              fontSize: 12,
+            }}>
+              {settingsMessage.text}
+            </div>
+          )}
+
+          <div style={{ display: 'grid', gap: 16 }}>
+            {/* Denomination */}
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', fontFamily: 'var(--font-mono)', display: 'block', marginBottom: 6 }}>
+                DENOMINATION ($ per square)
+              </label>
+              <select
+                value={settingsDenomination}
+                onChange={e => setSettingsDenomination(parseInt(e.target.value))}
+                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, color: 'var(--text)', fontSize: 14 }}
+              >
+                {[1, 5, 10, 25, 50, 100].map(d => (
+                  <option key={d} value={d}>${d}</option>
+                ))}
+              </select>
+              {settingsDenomination !== pool.denomination && (
+                <div style={{ marginTop: 6, padding: 8, background: 'rgba(251, 191, 36, 0.1)', borderRadius: 6, fontSize: 11, color: 'var(--gold)' }}>
+                  ⚠️ Changing denomination will auto-refund the difference to players who already paid (if lowering).
+                </div>
+              )}
+            </div>
+
+            {/* Max Per Player */}
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', fontFamily: 'var(--font-mono)', display: 'block', marginBottom: 6 }}>
+                MAX SQUARES PER PLAYER
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={settingsMaxPerPlayer}
+                onChange={e => setSettingsMaxPerPlayer(parseInt(e.target.value) || 10)}
+                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, color: 'var(--text)', fontSize: 14 }}
+              />
+            </div>
+
+            {/* Tip Percentage */}
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', fontFamily: 'var(--font-mono)', display: 'block', marginBottom: 6 }}>
+                SUGGESTED TIP %
+              </label>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={settingsTipPct}
+                onChange={e => setSettingsTipPct(parseInt(e.target.value) || 0)}
+                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, color: 'var(--text)', fontSize: 14 }}
+              />
+            </div>
+
+            {/* Payout Structure */}
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', fontFamily: 'var(--font-mono)', display: 'block', marginBottom: 6 }}>
+                PAYOUT STRUCTURE
+              </label>
+              <select
+                value={settingsPayoutStructure}
+                onChange={e => setSettingsPayoutStructure(e.target.value)}
+                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, color: 'var(--text)', fontSize: 14 }}
+              >
+                <option value="standard">Standard (Equal split)</option>
+                <option value="heavy_final">Heavy Final (10% each, rest to Final)</option>
+                <option value="halftime_final">Halftime & Final (25% / 75%)</option>
+                <option value="reverse">Reverse (40% Q1, decreasing)</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+
+            {/* Save Button */}
+            <button
+              onClick={async () => {
+                setSettingsSaving(true);
+                setSettingsMessage(null);
+                try {
+                  const result = await poolsApi.update(pool.id, {
+                    denomination: settingsDenomination,
+                    max_per_player: settingsMaxPerPlayer,
+                    tip_pct: settingsTipPct,
+                    payout_structure: settingsPayoutStructure,
+                  });
+
+                  const refundsProcessed = (result as any).refundsProcessed;
+                  if (refundsProcessed && refundsProcessed.length > 0) {
+                    const totalRefunded = refundsProcessed.reduce((sum: number, r: any) => sum + r.refundAmount, 0);
+                    setSettingsMessage({
+                      success: true,
+                      text: `Settings saved! ${refundsProcessed.length} player(s) refunded $${totalRefunded} total.`
+                    });
+                  } else {
+                    setSettingsMessage({ success: true, text: 'Settings saved successfully!' });
+                  }
+
+                  loadPool();
+                } catch (error) {
+                  setSettingsMessage({ success: false, text: error instanceof Error ? error.message : 'Failed to save settings' });
+                } finally {
+                  setSettingsSaving(false);
+                }
+              }}
+              disabled={settingsSaving}
+              style={{
+                background: 'var(--green)',
+                color: 'var(--bg)',
+                border: 'none',
+                borderRadius: 8,
+                padding: '14px',
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: settingsSaving ? 'not-allowed' : 'pointer',
+                opacity: settingsSaving ? 0.6 : 1,
+              }}
+            >
+              {settingsSaving ? 'Saving...' : 'Save Settings'}
+            </button>
+          </div>
+
+          {/* Danger Zone */}
+          <div style={{ marginTop: 32, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
+            <h4 style={{ fontSize: 12, fontWeight: 700, color: 'var(--red)', fontFamily: 'var(--font-mono)', marginBottom: 12 }}>
+              🚨 DANGER ZONE
+            </h4>
+
+            {!showDeleteConfirm ? (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                style={{
+                  background: 'transparent',
+                  color: 'var(--red)',
+                  border: '1px solid var(--red)',
+                  borderRadius: 8,
+                  padding: '12px 20px',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                🗑️ Delete Pool
+              </button>
+            ) : (
+              <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--red)', borderRadius: 8, padding: 16 }}>
+                <p style={{ fontSize: 13, color: 'var(--text)', marginBottom: 12 }}>
+                  Are you sure you want to delete this pool? This action cannot be undone.
+                </p>
+                <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 16 }}>
+                  All players who have paid will be automatically refunded to their wallet.
+                </p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={async () => {
+                      setDeleting(true);
+                      try {
+                        const result = await poolsApi.delete(pool.id);
+                        const res = result as any;
+                        if (res.refundsProcessed && res.refundsProcessed.length > 0) {
+                          alert(`Pool deleted. ${res.refundsProcessed.length} player(s) refunded $${res.totalRefunded} total.`);
+                        } else {
+                          alert('Pool deleted successfully.');
+                        }
+                        window.location.href = '/pools';
+                      } catch (error) {
+                        alert(error instanceof Error ? error.message : 'Failed to delete pool');
+                      } finally {
+                        setDeleting(false);
+                      }
+                    }}
+                    disabled={deleting}
+                    style={{
+                      flex: 1,
+                      background: 'var(--red)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 8,
+                      padding: '10px',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: deleting ? 'not-allowed' : 'pointer',
+                      opacity: deleting ? 0.6 : 1,
+                    }}
+                  >
+                    {deleting ? 'Deleting...' : 'Yes, Delete Pool'}
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    style={{
+                      flex: 1,
+                      background: 'transparent',
+                      color: 'var(--muted)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 8,
+                      padding: '10px',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
