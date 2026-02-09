@@ -3,10 +3,20 @@ import { config } from '../config.js';
 
 const { Pool } = pg;
 
-export const pool = new Pool({
+// Use separate connection parameters if available (avoids $ escape issues)
+const poolConfig = config.database.host ? {
+  host: config.database.host,
+  port: config.database.port,
+  user: config.database.user,
+  password: config.database.password,
+  database: config.database.name,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+} : {
   connectionString: config.database.url,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
+};
+
+export const pool = new Pool(poolConfig);
 
 // Helper for transactions
 export async function withTransaction<T>(

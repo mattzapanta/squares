@@ -5,6 +5,11 @@ export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
   database: {
     url: process.env.DATABASE_URL || 'postgresql://localhost:5432/squareshq',
+    host: process.env.DB_HOST,
+    port: parseInt(process.env.DB_PORT || '5432', 10),
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    name: process.env.DB_NAME,
   },
   // Site password - if set, users must enter this before accessing the app
   sitePassword: process.env.SITE_PASSWORD || '',
