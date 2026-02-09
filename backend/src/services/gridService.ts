@@ -57,11 +57,11 @@ export async function getGridWithPlayers(poolId: string) {
     [poolId]
   );
 
-  // Convert to 2D array - include pending squares too
-  const grid: (typeof result.rows[0] | null)[][] = Array(10).fill(null).map(() => Array(10).fill(null));
+  // Convert to 2D array - include ALL squares (claimed, pending, and available)
+  const grid: (typeof result.rows[0])[][] = Array(10).fill(null).map(() => Array(10).fill(null));
   for (const row of result.rows) {
-    // Include if claimed OR pending (has player_id)
-    grid[row.row_idx][row.col_idx] = row.player_id ? row : null;
+    // Include all squares - player_id will be null for unclaimed squares
+    grid[row.row_idx][row.col_idx] = row;
   }
 
   return grid;
