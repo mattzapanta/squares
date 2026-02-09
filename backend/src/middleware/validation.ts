@@ -27,7 +27,7 @@ export const schemas = {
   // Auth
   register: z.object({
     email: z.string().email('Invalid email'),
-    password: z.string().min(8, 'Password must be at least 8 characters'),
+    password: z.string().min(5, 'Password must be at least 5 characters'),
     name: z.string().min(1, 'Name is required').max(100),
     phone: z.string().min(1, 'Phone is required').max(20),
   }),
