@@ -148,11 +148,77 @@ router.get('/:id', async (req: AuthRequest, res) => {
 // Update pool settings
 router.patch('/:id', validate(schemas.updatePool), async (req: AuthRequest, res) => {
   try {
+    const poolId = req.params.id;
+
+    // Get current pool to check for denomination change
+    const currentPool = await query<Pool>(
+      'SELECT * FROM pools WHERE id = $1 AND admin_id = $2',
+      [poolId, req.admin!.id]
+    );
+
+    if (currentPool.rows.length === 0) {
+      return res.status(404).json({ error: 'Pool not found' });
+    }
+
+    const oldPool = currentPool.rows[0];
+    const newDenomination = req.body.denomination;
+    let refundsProcessed: { playerId: string; playerName: string; refundAmount: number }[] = [];
+
+    // Handle denomination change with auto-refund
+    if (newDenomination !== undefined && newDenomination !== oldPool.denomination) {
+      const oldDenom = oldPool.denomination;
+      const newDenom = newDenomination;
+
+      if (newDenom > oldDenom) {
+        // Increasing denomination - just warn, don't auto-charge
+        // Admin will need to collect additional payments manually
+      } else {
+        // Decreasing denomination - auto-refund the difference to player wallets
+        // Get all players who have paid (have buy_in entries in ledger)
+        const paidPlayers = await query<{ player_id: string; player_name: string; square_count: number; total_paid: number }>(
+          `SELECT
+            l.player_id,
+            p.name as player_name,
+            (SELECT COUNT(*) FROM squares WHERE pool_id = $1 AND player_id = l.player_id AND claim_status = 'claimed') as square_count,
+            ABS(SUM(l.amount)) as total_paid
+           FROM ledger l
+           JOIN players p ON l.player_id = p.id
+           WHERE l.pool_id = $1 AND l.type = 'buy_in'
+           GROUP BY l.player_id, p.name`,
+          [poolId]
+        );
+
+        // Calculate and issue refunds
+        for (const player of paidPlayers.rows) {
+          const squaresPaidFor = Math.floor(player.total_paid / oldDenom);
+          const oldCost = squaresPaidFor * oldDenom;
+          const newCost = squaresPaidFor * newDenom;
+          const refundAmount = oldCost - newCost;
+
+          if (refundAmount > 0) {
+            // Credit the difference to player's wallet
+            await query(
+              `INSERT INTO ledger (player_id, pool_id, type, amount, description)
+               VALUES ($1, NULL, 'credit', $2, $3)`,
+              [player.player_id, refundAmount, `Refund: denomination changed from $${oldDenom} to $${newDenom} in pool`]
+            );
+
+            refundsProcessed.push({
+              playerId: player.player_id,
+              playerName: player.player_name,
+              refundAmount,
+            });
+          }
+        }
+      }
+    }
+
     const updates: string[] = [];
     const values: unknown[] = [];
     let idx = 1;
 
-    const allowedFields = ['name', 'game_date', 'game_time', 'game_label', 'payout_structure', 'tip_pct', 'max_per_player', 'approval_threshold', 'ot_rule'];
+    // Now allow denomination in allowed fields
+    const allowedFields = ['name', 'game_date', 'game_time', 'game_label', 'denomination', 'payout_structure', 'tip_pct', 'max_per_player', 'approval_threshold', 'ot_rule'];
 
     for (const field of allowedFields) {
       if (req.body[field] !== undefined) {
@@ -171,26 +237,28 @@ router.patch('/:id', validate(schemas.updatePool), async (req: AuthRequest, res)
       return res.status(400).json({ error: 'No fields to update' });
     }
 
-    values.push(req.params.id, req.admin!.id);
+    values.push(poolId, req.admin!.id);
 
     const result = await query<Pool>(
       `UPDATE pools SET ${updates.join(', ')} WHERE id = $${idx++} AND admin_id = $${idx} RETURNING *`,
       values
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Pool not found' });
-    }
-
     await logAudit({
-      pool_id: req.params.id,
+      pool_id: poolId,
       actor_type: 'admin',
       actor_id: req.admin!.id,
       action: 'pool_updated',
-      detail: req.body,
+      detail: {
+        ...req.body,
+        refundsProcessed: refundsProcessed.length > 0 ? refundsProcessed : undefined,
+      },
     });
 
-    res.json(result.rows[0]);
+    res.json({
+      ...result.rows[0],
+      refundsProcessed: refundsProcessed.length > 0 ? refundsProcessed : undefined,
+    });
   } catch (error) {
     console.error('Update pool error:', error);
     res.status(500).json({ error: 'Failed to update pool' });
@@ -243,19 +311,79 @@ router.post('/:id/unlock', async (req: AuthRequest, res) => {
   }
 });
 
-// Delete pool
+// Delete/Cancel pool (with automatic refunds to all players)
 router.delete('/:id', async (req: AuthRequest, res) => {
   try {
-    const result = await query(
-      'DELETE FROM pools WHERE id = $1 AND admin_id = $2 RETURNING id',
-      [req.params.id, req.admin!.id]
+    const poolId = req.params.id;
+    const refundsProcessed: { playerId: string; playerName: string; refundAmount: number }[] = [];
+
+    // First verify pool exists and belongs to admin
+    const poolCheck = await query<Pool>(
+      'SELECT * FROM pools WHERE id = $1 AND admin_id = $2',
+      [poolId, req.admin!.id]
     );
 
-    if (result.rows.length === 0) {
+    if (poolCheck.rows.length === 0) {
       return res.status(404).json({ error: 'Pool not found' });
     }
 
-    res.json({ message: 'Pool deleted' });
+    const poolName = poolCheck.rows[0].name;
+
+    // Get all payments made to this pool (from ledger)
+    const paymentsResult = await query<{ player_id: string; player_name: string; total_paid: number }>(
+      `SELECT
+        l.player_id,
+        p.name as player_name,
+        COALESCE(ABS(SUM(l.amount)), 0) as total_paid
+       FROM ledger l
+       JOIN players p ON l.player_id = p.id
+       WHERE l.pool_id = $1 AND l.type = 'buy_in'
+       GROUP BY l.player_id, p.name`,
+      [poolId]
+    );
+
+    // Refund each player's payments to their wallet
+    for (const player of paymentsResult.rows) {
+      const totalPaid = parseInt(String(player.total_paid)) || 0;
+      if (totalPaid > 0) {
+        await query(
+          `INSERT INTO ledger (player_id, pool_id, type, amount, description)
+           VALUES ($1, NULL, 'credit', $2, $3)`,
+          [player.player_id, totalPaid, `Refund: pool "${poolName}" cancelled`]
+        );
+
+        refundsProcessed.push({
+          playerId: player.player_id,
+          playerName: player.player_name,
+          refundAmount: totalPaid,
+        });
+      }
+    }
+
+    // Log audit before deleting (since pool_id will be invalid after delete)
+    await logAudit({
+      pool_id: poolId,
+      actor_type: 'admin',
+      actor_id: req.admin!.id,
+      action: 'pool_cancelled',
+      detail: {
+        pool_name: poolName,
+        refunds_issued: refundsProcessed.length,
+        total_refunded: refundsProcessed.reduce((sum, r) => sum + r.refundAmount, 0),
+      },
+    });
+
+    // Now delete the pool (cascades to squares, pool_players, etc.)
+    await query(
+      'DELETE FROM pools WHERE id = $1 AND admin_id = $2',
+      [poolId, req.admin!.id]
+    );
+
+    res.json({
+      message: 'Pool cancelled and deleted',
+      refundsProcessed,
+      totalRefunded: refundsProcessed.reduce((sum, r) => sum + r.refundAmount, 0),
+    });
   } catch (error) {
     console.error('Delete pool error:', error);
     res.status(500).json({ error: 'Failed to delete pool' });

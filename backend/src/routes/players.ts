@@ -314,11 +314,12 @@ router.post('/:playerId/reinstate', async (req: AuthRequest, res) => {
   }
 });
 
-// Remove player from pool
+// Remove player from pool (with automatic refund to wallet)
 router.delete('/:playerId', async (req: AuthRequest, res) => {
   try {
     const poolId = req.params.id;
     const playerId = req.params.playerId;
+    let refundAmount = 0;
 
     await withTransaction(async (client) => {
       // Get counts before releasing
@@ -331,6 +332,25 @@ router.delete('/:playerId', async (req: AuthRequest, res) => {
       );
       const claimed = parseInt(countResult.rows[0].claimed_count) || 0;
       const pending = parseInt(countResult.rows[0].pending_count) || 0;
+
+      // Check how much the player has paid into this pool (from ledger)
+      const paymentResult = await client.query(
+        `SELECT COALESCE(ABS(SUM(amount)), 0) as total_paid
+         FROM ledger
+         WHERE pool_id = $1 AND player_id = $2 AND type = 'buy_in'`,
+        [poolId, playerId]
+      );
+      const totalPaid = parseInt(paymentResult.rows[0].total_paid) || 0;
+
+      // If player has paid, credit the amount back to their wallet
+      if (totalPaid > 0) {
+        refundAmount = totalPaid;
+        await client.query(
+          `INSERT INTO ledger (player_id, pool_id, type, amount, description)
+           VALUES ($1, NULL, 'credit', $2, $3)`,
+          [playerId, totalPaid, `Refund: removed from pool`]
+        );
+      }
 
       // Release squares (set claim_status to available)
       await client.query(
@@ -350,11 +370,20 @@ router.delete('/:playerId', async (req: AuthRequest, res) => {
         actor_type: 'admin',
         actor_id: req.admin!.id,
         action: 'player_removed',
-        detail: { player_id: playerId, claimed_released: claimed, pending_released: pending },
+        detail: {
+          player_id: playerId,
+          claimed_released: claimed,
+          pending_released: pending,
+          refund_amount: refundAmount,
+        },
       });
     });
 
-    res.json({ message: 'Player removed' });
+    res.json({
+      message: 'Player removed',
+      refundAmount,
+      refundedToWallet: refundAmount > 0,
+    });
   } catch (error) {
     console.error('Remove player error:', error);
     res.status(500).json({ error: 'Failed to remove player' });

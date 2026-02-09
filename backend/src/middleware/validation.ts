@@ -75,6 +75,10 @@ export const schemas = {
     game_date: z.string().optional(),
     game_time: z.string().optional(),
     game_label: z.string().max(50).optional(),
+    denomination: z.number().int().positive().refine(
+      v => [1, 5, 10, 25, 50, 100].includes(v),
+      'Denomination must be 1, 5, 10, 25, 50, or 100'
+    ).optional(),
     payout_structure: z.enum(['standard', 'heavy_final', 'halftime_final', 'reverse', 'custom']).optional(),
     custom_payouts: z.record(z.string(), z.number().min(0).max(100)).optional(),
     tip_pct: z.number().int().min(0).max(100).optional(),
