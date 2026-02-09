@@ -87,6 +87,19 @@ async function claimSquare(token: string, poolId: string, row: number, col: numb
   return res.json();
 }
 
+async function releaseSquare(token: string, poolId: string, row: number, col: number): Promise<{ message: string; refundAmount: number; refundedToWallet: boolean }> {
+  const res = await fetch(`${API_BASE}/p/${token}/pools/${poolId}/release`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ row, col }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to release' }));
+    throw new Error(err.error || 'Failed to release square');
+  }
+  return res.json();
+}
+
 export default function PlayerPortal() {
   const { token } = useParams<{ token: string }>();
   const [searchParams] = useSearchParams();
@@ -100,6 +113,7 @@ export default function PlayerPortal() {
   const [selectedPoolId, setSelectedPoolId] = useState<string | null>(initialPoolId);
   const [poolDetail, setPoolDetail] = useState<PoolDetailView | null>(null);
   const [claiming, setClaiming] = useState(false);
+  const [releasing, setReleasing] = useState<string | null>(null); // "row-col" of square being released
   const [claimMessage, setClaimMessage] = useState<{ success: boolean; text: string } | null>(null);
 
   // Load player data
@@ -145,6 +159,32 @@ export default function PlayerPortal() {
       setClaimMessage({ success: false, text: err instanceof Error ? err.message : 'Failed to claim' });
     } finally {
       setClaiming(false);
+    }
+  };
+
+  const handleReleaseSquare = async (row: number, col: number) => {
+    if (!token || !selectedPoolId || releasing) return;
+    if (!confirm(`Release this square? ${poolDetail?.membership.paid ? 'You will receive a refund to your wallet.' : ''}`)) return;
+
+    setReleasing(`${row}-${col}`);
+    setClaimMessage(null);
+    try {
+      const result = await releaseSquare(token, selectedPoolId, row, col);
+      const msg = result.refundedToWallet
+        ? `Square released! $${result.refundAmount} credited to your wallet.`
+        : result.message;
+      setClaimMessage({ success: true, text: msg });
+      // Reload pool detail
+      const updated = await fetchPoolDetail(token, selectedPoolId);
+      setPoolDetail(updated);
+      // Reload pools list and balance
+      const data = await fetchPlayerData(token);
+      setPools(data.pools);
+      setBalance(data.balance);
+    } catch (err) {
+      setClaimMessage({ success: false, text: err instanceof Error ? err.message : 'Failed to release' });
+    } finally {
+      setReleasing(null);
     }
   };
 
@@ -448,22 +488,35 @@ export default function PlayerPortal() {
             {/* My squares list */}
             {poolDetail.mySquares.length > 0 && (
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 20, marginTop: 20 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--dim)', fontFamily: 'var(--font-mono)', marginBottom: 12 }}>MY SQUARES</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--dim)', fontFamily: 'var(--font-mono)', margin: 0 }}>MY SQUARES</h3>
+                  {!isLocked && (
+                    <span style={{ fontSize: 10, color: 'var(--muted)' }}>Tap a square to release it</span>
+                  )}
+                </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {poolDetail.mySquares.map(sq => {
                     const rowDigit = poolDetail.pool.row_digits?.[sq.row_idx] ?? '?';
                     const colDigit = poolDetail.pool.col_digits?.[sq.col_idx] ?? '?';
                     const winner = poolDetail.winners.find(w => w.square_row === sq.row_idx && w.square_col === sq.col_idx);
+                    const isReleasing = releasing === `${sq.row_idx}-${sq.col_idx}`;
+                    const canRelease = !isLocked && !winner && !isReleasing;
                     return (
                       <div
                         key={`${sq.row_idx}-${sq.col_idx}`}
+                        onClick={() => canRelease && handleReleaseSquare(sq.row_idx, sq.col_idx)}
                         style={{
-                          background: winner ? 'rgba(251, 191, 36, 0.2)' : 'var(--bg)',
-                          border: winner ? '1px solid var(--gold)' : '1px solid var(--border)',
+                          background: winner ? 'rgba(251, 191, 36, 0.2)' : isReleasing ? 'rgba(239, 68, 68, 0.1)' : 'var(--bg)',
+                          border: winner ? '1px solid var(--gold)' : isReleasing ? '1px solid var(--red)' : '1px solid var(--border)',
                           borderRadius: 8,
                           padding: '8px 12px',
                           textAlign: 'center',
+                          cursor: canRelease ? 'pointer' : 'default',
+                          opacity: isReleasing ? 0.6 : 1,
+                          transition: 'all 0.15s',
                         }}
+                        onMouseEnter={e => canRelease && (e.currentTarget.style.borderColor = 'var(--red)')}
+                        onMouseLeave={e => !winner && (e.currentTarget.style.borderColor = 'var(--border)')}
                       >
                         <div style={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--font-mono)' }}>
                           <span style={{ color: 'var(--blue)' }}>{colDigit}</span>
@@ -476,6 +529,11 @@ export default function PlayerPortal() {
                         {winner && (
                           <div style={{ fontSize: 10, color: 'var(--gold)', fontWeight: 700, marginTop: 4 }}>
                             🏆 Won ${winner.payout_amount}!
+                          </div>
+                        )}
+                        {!isLocked && !winner && (
+                          <div style={{ fontSize: 9, color: 'var(--red)', marginTop: 4, opacity: 0.7 }}>
+                            {isReleasing ? 'Releasing...' : '× Release'}
                           </div>
                         )}
                       </div>
