@@ -140,8 +140,17 @@ export default function PlayerPortal() {
   useEffect(() => {
     if (!token || !selectedPoolId) return;
     fetchPoolDetail(token, selectedPoolId)
-      .then(setPoolDetail)
-      .catch(err => console.error('Failed to load pool detail:', err));
+      .then(data => {
+        // Ensure grid is properly formatted (2D array with no undefined rows)
+        if (data.grid && Array.isArray(data.grid)) {
+          data.grid = data.grid.map(row => Array.isArray(row) ? row : []);
+        }
+        setPoolDetail(data);
+      })
+      .catch(err => {
+        console.error('Failed to load pool detail:', err);
+        setError('Failed to load pool details: ' + err.message);
+      });
   }, [token, selectedPoolId]);
 
   const handleClaimSquare = async (row: number, col: number) => {
@@ -426,15 +435,15 @@ export default function PlayerPortal() {
                   </div>
                   {/* Grid cells */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 38px)', gap: 2, background: 'var(--border)', padding: 2, borderRadius: 8 }}>
-                    {poolDetail.grid.map((row, r) => row.map((cellData, c) => {
+                    {poolDetail.grid && poolDetail.grid.map((row, r) => row && row.map((cellData, c) => {
                       // Handle null cells (unclaimed squares)
                       const cell = cellData || { player_id: null, player_name: null, claim_status: 'available' as const };
-                      const isMine = poolDetail.mySquares.some(s => s.row_idx === r && s.col_idx === c);
+                      const isMine = poolDetail.mySquares?.some(s => s.row_idx === r && s.col_idx === c) || false;
                       const isAvailable = !cell.player_id && cell.claim_status === 'available';
                       const isPending = cell.claim_status === 'pending';
                       const canClaim = isAvailable && !isLocked && !maxReached && !claiming;
                       const color = cell.player_id ? (playerColors[cell.player_id] || 'var(--muted)') : 'transparent';
-                      const winner = poolDetail.winners.find(w => w.square_row === r && w.square_col === c);
+                      const winner = poolDetail.winners?.find(w => w.square_row === r && w.square_col === c);
 
                       return (
                         <div
