@@ -3,6 +3,11 @@ import { config } from '../config.js';
 
 const { Pool } = pg;
 
+import dns from 'dns';
+
+// Force IPv4 DNS resolution (Render has IPv6 issues with some providers)
+dns.setDefaultResultOrder('ipv4first');
+
 // Use separate connection parameters if available (avoids $ escape issues)
 const poolConfig = config.database.host ? {
   host: config.database.host,
