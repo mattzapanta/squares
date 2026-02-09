@@ -10,6 +10,7 @@ import squaresRoutes from './routes/squares.js';
 import playersRoutes from './routes/players.js';
 import scoresRoutes from './routes/scores.js';
 import playerPortalRoutes from './routes/playerPortal.js';
+import gamesRoutes from './routes/games.js';
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use('/api/pools/:id/squares', squaresRoutes);
 app.use('/api/pools/:id/players', playersRoutes);
 app.use('/api/pools/:id/scores', scoresRoutes);
 app.use('/api/p', playerPortalRoutes);
+app.use('/api/games', gamesRoutes);
 
 // Error handler
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

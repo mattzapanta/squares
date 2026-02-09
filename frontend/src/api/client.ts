@@ -170,3 +170,25 @@ export const scores = {
       }),
     }),
 };
+
+// Games (sports schedules)
+export interface Game {
+  id: string;
+  sport: string;
+  away: string;
+  home: string;
+  away_full?: string;
+  home_full?: string;
+  date: string;
+  time: string;
+  label?: string;
+  status?: string;
+}
+
+export const games = {
+  list: (sport: string, date?: string) =>
+    request<Game[]>(`/games/${sport}${date ? `?date=${date}` : ''}`),
+
+  getScores: (sport: string, gameId: string) =>
+    request<{ away_score: number; home_score: number; status: string }>(`/games/${sport}/${gameId}/scores`),
+};

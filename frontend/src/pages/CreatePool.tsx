@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { SportType, SPORTS_CONFIG } from '../types';
-import { pools as poolsApi } from '../api/client';
+import { pools as poolsApi, games as gamesApi, Game } from '../api/client';
 
 export default function CreatePool() {
   const navigate = useNavigate();
@@ -22,6 +22,9 @@ export default function CreatePool() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [availableGames, setAvailableGames] = useState<Game[]>([]);
+  const [gamesLoading, setGamesLoading] = useState(false);
+  const [useManualEntry, setUseManualEntry] = useState(false);
 
   const handleCreate = async () => {
     if (!sport) return;
@@ -40,6 +43,38 @@ export default function CreatePool() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Fetch available games when sport is selected
+  useEffect(() => {
+    if (sport && sport !== 'custom') {
+      setGamesLoading(true);
+      setUseManualEntry(false);
+      gamesApi.list(sport)
+        .then(games => {
+          setAvailableGames(games);
+        })
+        .catch(() => {
+          setAvailableGames([]);
+        })
+        .finally(() => setGamesLoading(false));
+    } else {
+      setAvailableGames([]);
+      setUseManualEntry(true);
+    }
+  }, [sport]);
+
+  const selectGame = (game: Game) => {
+    setForm({
+      ...form,
+      away_team: game.away,
+      home_team: game.home,
+      game_date: game.date,
+      game_time: game.time || '',
+      game_label: game.label || '',
+      name: `${game.away} vs ${game.home}`,
+    });
+    setStep(2);
   };
 
   const sc = sport ? SPORTS_CONFIG[sport] : null;
@@ -134,122 +169,220 @@ export default function CreatePool() {
       {step === 1 && sc && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Enter matchup</h3>
+            <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>
+              {useManualEntry ? 'Enter matchup' : 'Select a game'}
+            </h3>
             <button onClick={() => setStep(0)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 12 }}>
               ← Back
             </button>
           </div>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 10, fontFamily: 'var(--font-mono)' }}>
-              MATCHUP
-            </div>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <input
-                placeholder="Away"
-                value={form.away_team}
-                onChange={e => setForm({ ...form, away_team: e.target.value.toUpperCase() })}
+
+          {/* Games list from API */}
+          {!useManualEntry && (
+            <div style={{ marginBottom: 16 }}>
+              {gamesLoading ? (
+                <div style={{ textAlign: 'center', padding: 32, color: 'var(--muted)' }}>
+                  Loading games...
+                </div>
+              ) : availableGames.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {availableGames.map(game => (
+                    <div
+                      key={game.id}
+                      onClick={() => selectGame(game)}
+                      style={{
+                        background: 'var(--surface)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 10,
+                        padding: 14,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.borderColor = sc.color)}
+                      onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontWeight: 800, fontFamily: 'var(--font-mono)', fontSize: 16 }}>
+                            {game.away} vs {game.home}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                            {game.away_full} @ {game.home_full}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: 12, color: 'var(--text)' }}>{game.date}</div>
+                          <div style={{ fontSize: 11, color: 'var(--dim)' }}>{game.time}</div>
+                          {game.label && (
+                            <div style={{ fontSize: 10, color: sc.color, marginTop: 2, fontWeight: 600 }}>
+                              {game.label}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: 24, color: 'var(--muted)', background: 'var(--surface)', borderRadius: 10 }}>
+                  No upcoming games found
+                </div>
+              )}
+              <button
+                onClick={() => setUseManualEntry(true)}
                 style={{
-                  flex: 1,
-                  background: 'var(--bg)',
+                  width: '100%',
+                  marginTop: 12,
+                  background: 'transparent',
+                  color: 'var(--muted)',
                   border: '1px solid var(--border)',
                   borderRadius: 8,
-                  padding: '10px 12px',
-                  color: 'var(--text)',
+                  padding: '10px 16px',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                Enter matchup manually instead
+              </button>
+            </div>
+          )}
+
+          {/* Manual entry form */}
+          {useManualEntry && (
+            <>
+              {sport !== 'custom' && availableGames.length > 0 && (
+                <button
+                  onClick={() => setUseManualEntry(false)}
+                  style={{
+                    width: '100%',
+                    marginBottom: 12,
+                    background: 'transparent',
+                    color: 'var(--muted)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 8,
+                    padding: '10px 16px',
+                    fontSize: 12,
+                    cursor: 'pointer',
+                  }}
+                >
+                  ← Back to game list
+                </button>
+              )}
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 10, fontFamily: 'var(--font-mono)' }}>
+                  MATCHUP
+                </div>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <input
+                    placeholder="Away"
+                    value={form.away_team}
+                    onChange={e => setForm({ ...form, away_team: e.target.value.toUpperCase() })}
+                    style={{
+                      flex: 1,
+                      background: 'var(--bg)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 8,
+                      padding: '10px 12px',
+                      color: 'var(--text)',
+                      fontSize: 14,
+                      fontWeight: 700,
+                      fontFamily: 'var(--font-mono)',
+                      outline: 'none',
+                      textTransform: 'uppercase',
+                    }}
+                  />
+                  <span style={{ color: 'var(--dim)', fontWeight: 700, fontSize: 12 }}>vs</span>
+                  <input
+                    placeholder="Home"
+                    value={form.home_team}
+                    onChange={e => setForm({ ...form, home_team: e.target.value.toUpperCase() })}
+                    style={{
+                      flex: 1,
+                      background: 'var(--bg)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 8,
+                      padding: '10px 12px',
+                      color: 'var(--text)',
+                      fontSize: 14,
+                      fontWeight: 700,
+                      fontFamily: 'var(--font-mono)',
+                      outline: 'none',
+                      textTransform: 'uppercase',
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+                  <input
+                    type="date"
+                    value={form.game_date}
+                    onChange={e => setForm({ ...form, game_date: e.target.value })}
+                    style={{
+                      flex: 1,
+                      background: 'var(--bg)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 8,
+                      padding: '10px 12px',
+                      color: 'var(--text)',
+                      fontSize: 12,
+                      fontFamily: 'var(--font-mono)',
+                      outline: 'none',
+                    }}
+                  />
+                  <input
+                    type="time"
+                    value={form.game_time}
+                    onChange={e => setForm({ ...form, game_time: e.target.value })}
+                    style={{
+                      flex: 1,
+                      background: 'var(--bg)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 8,
+                      padding: '10px 12px',
+                      color: 'var(--text)',
+                      fontSize: 12,
+                      fontFamily: 'var(--font-mono)',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+                <input
+                  placeholder="Label (e.g. Week 18, Super Bowl)"
+                  value={form.game_label}
+                  onChange={e => setForm({ ...form, game_label: e.target.value })}
+                  style={{
+                    width: '100%',
+                    marginTop: 12,
+                    background: 'var(--bg)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 8,
+                    padding: '10px 12px',
+                    color: 'var(--text)',
+                    fontSize: 12,
+                    outline: 'none',
+                  }}
+                />
+              </div>
+              <button
+                onClick={() => { setForm({ ...form, name: `${form.away_team} vs ${form.home_team}` }); setStep(2); }}
+                disabled={!form.away_team || !form.home_team}
+                style={{
+                  width: '100%',
+                  marginTop: 16,
+                  background: 'var(--green)',
+                  color: 'var(--bg)',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '12px 16px',
                   fontSize: 14,
                   fontWeight: 700,
-                  fontFamily: 'var(--font-mono)',
-                  outline: 'none',
-                  textTransform: 'uppercase',
+                  opacity: !form.away_team || !form.home_team ? 0.5 : 1,
+                  cursor: !form.away_team || !form.home_team ? 'not-allowed' : 'pointer',
                 }}
-              />
-              <span style={{ color: 'var(--dim)', fontWeight: 700, fontSize: 12 }}>vs</span>
-              <input
-                placeholder="Home"
-                value={form.home_team}
-                onChange={e => setForm({ ...form, home_team: e.target.value.toUpperCase() })}
-                style={{
-                  flex: 1,
-                  background: 'var(--bg)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 8,
-                  padding: '10px 12px',
-                  color: 'var(--text)',
-                  fontSize: 14,
-                  fontWeight: 700,
-                  fontFamily: 'var(--font-mono)',
-                  outline: 'none',
-                  textTransform: 'uppercase',
-                }}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
-              <input
-                type="date"
-                value={form.game_date}
-                onChange={e => setForm({ ...form, game_date: e.target.value })}
-                style={{
-                  flex: 1,
-                  background: 'var(--bg)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 8,
-                  padding: '10px 12px',
-                  color: 'var(--text)',
-                  fontSize: 12,
-                  fontFamily: 'var(--font-mono)',
-                  outline: 'none',
-                }}
-              />
-              <input
-                type="time"
-                value={form.game_time}
-                onChange={e => setForm({ ...form, game_time: e.target.value })}
-                style={{
-                  flex: 1,
-                  background: 'var(--bg)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 8,
-                  padding: '10px 12px',
-                  color: 'var(--text)',
-                  fontSize: 12,
-                  fontFamily: 'var(--font-mono)',
-                  outline: 'none',
-                }}
-              />
-            </div>
-            <input
-              placeholder="Label (e.g. Week 18, Super Bowl)"
-              value={form.game_label}
-              onChange={e => setForm({ ...form, game_label: e.target.value })}
-              style={{
-                width: '100%',
-                marginTop: 12,
-                background: 'var(--bg)',
-                border: '1px solid var(--border)',
-                borderRadius: 8,
-                padding: '10px 12px',
-                color: 'var(--text)',
-                fontSize: 12,
-                outline: 'none',
-              }}
-            />
-          </div>
-          <button
-            onClick={() => { setForm({ ...form, name: `${form.away_team} vs ${form.home_team}` }); setStep(2); }}
-            disabled={!form.away_team || !form.home_team}
-            style={{
-              width: '100%',
-              marginTop: 16,
-              background: 'var(--green)',
-              color: 'var(--bg)',
-              border: 'none',
-              borderRadius: 8,
-              padding: '12px 16px',
-              fontSize: 14,
-              fontWeight: 700,
-            }}
-          >
-            Continue →
-          </button>
+              >
+                Continue →
+              </button>
+            </>
+          )}
         </div>
       )}
 
