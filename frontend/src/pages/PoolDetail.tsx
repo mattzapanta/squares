@@ -307,6 +307,7 @@ export default function PoolDetail() {
   const [settingsTipPct, setSettingsTipPct] = useState<number>(10);
   const [settingsPayoutStructure, setSettingsPayoutStructure] = useState<PayoutStructure>('standard');
   const [settingsCustomPayouts, setSettingsCustomPayouts] = useState<Record<string, number>>({});
+  const [settingsInputMode, setSettingsInputMode] = useState<'percent' | 'dollar'>('percent');
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState<{ success: boolean; text: string } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -2040,43 +2041,156 @@ export default function PoolDetail() {
               </select>
 
               {/* Custom Payouts Editor */}
-              {settingsPayoutStructure === 'custom' && (
-                <div style={{ marginTop: 12, padding: 12, background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', marginBottom: 8 }}>
-                    CUSTOM PERCENTAGES (must total 100%)
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {Object.entries(settingsCustomPayouts).map(([period, pct]) => (
-                      <div key={period} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-mono)', width: 30 }}>
-                          {period.toUpperCase()}
-                        </span>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={pct}
-                          onChange={e => setSettingsCustomPayouts(prev => ({
-                            ...prev,
-                            [period]: parseInt(e.target.value) || 0
-                          }))}
-                          style={{ width: 50, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 8px', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font-mono)', textAlign: 'center' }}
-                        />
-                        <span style={{ fontSize: 11, color: 'var(--dim)' }}>%</span>
+              {settingsPayoutStructure === 'custom' && (() => {
+                const poolTotal = settingsDenomination * 100;
+                const totalPct = Object.values(settingsCustomPayouts).reduce((sum, p) => sum + p, 0);
+                const remainingPct = 100 - totalPct;
+                const isValid = Math.abs(totalPct - 100) < 0.01;
+                const periodKeys = Object.keys(settingsCustomPayouts);
+                const lastKey = periodKeys[periodKeys.length - 1];
+
+                const updateFromPercent = (key: string, pct: number) => {
+                  setSettingsCustomPayouts(prev => ({ ...prev, [key]: Math.max(0, Math.min(100, pct)) }));
+                };
+                const updateFromDollar = (key: string, dollars: number) => {
+                  const pct = Math.round((dollars / poolTotal) * 100 * 100) / 100;
+                  setSettingsCustomPayouts(prev => ({ ...prev, [key]: Math.max(0, pct) }));
+                };
+                const splitEven = () => {
+                  const n = periodKeys.length;
+                  const evenSplit = Math.floor(100 / n);
+                  const remainder = 100 - (evenSplit * n);
+                  const balanced: Record<string, number> = {};
+                  periodKeys.forEach((k, i) => {
+                    balanced[k] = i === n - 1 ? evenSplit + remainder : evenSplit;
+                  });
+                  setSettingsCustomPayouts(balanced);
+                };
+                const autoFillLast = () => {
+                  const otherTotal = Object.entries(settingsCustomPayouts)
+                    .filter(([k]) => k !== lastKey)
+                    .reduce((sum, [, v]) => sum + v, 0);
+                  setSettingsCustomPayouts(prev => ({ ...prev, [lastKey]: Math.max(0, 100 - otherTotal) }));
+                };
+
+                return (
+                  <div style={{ marginTop: 12, padding: 12, background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                    {/* Input mode toggle */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)' }}>Enter by:</div>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button
+                          type="button"
+                          onClick={() => setSettingsInputMode('percent')}
+                          style={{
+                            padding: '6px 12px',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            borderRadius: 6,
+                            border: 'none',
+                            cursor: 'pointer',
+                            background: settingsInputMode === 'percent' ? 'var(--green)' : 'var(--surface)',
+                            color: settingsInputMode === 'percent' ? 'var(--bg)' : 'var(--muted)',
+                          }}
+                        >
+                          %
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSettingsInputMode('dollar')}
+                          style={{
+                            padding: '6px 12px',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            borderRadius: 6,
+                            border: 'none',
+                            cursor: 'pointer',
+                            background: settingsInputMode === 'dollar' ? 'var(--green)' : 'var(--surface)',
+                            color: settingsInputMode === 'dollar' ? 'var(--bg)' : 'var(--muted)',
+                          }}
+                        >
+                          $
+                        </button>
                       </div>
-                    ))}
-                  </div>
-                  {(() => {
-                    const total = Object.values(settingsCustomPayouts).reduce((sum, pct) => sum + pct, 0);
-                    const isValid = Math.abs(total - 100) < 0.01;
-                    return (
-                      <div style={{ marginTop: 8, fontSize: 11, color: isValid ? 'var(--green)' : 'var(--red)', fontFamily: 'var(--font-mono)' }}>
-                        Total: {total}% {isValid ? '✓' : '(must be 100%)'}
+                    </div>
+
+                    {/* Period inputs */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {Object.entries(settingsCustomPayouts).map(([period, pct]) => {
+                        const dollars = Math.round(poolTotal * pct / 100);
+                        return (
+                          <div key={period} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ width: 45, fontSize: 12, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
+                              {period.toUpperCase()}
+                            </div>
+                            {settingsInputMode === 'percent' ? (
+                              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={pct}
+                                  onChange={e => updateFromPercent(period, Number(e.target.value))}
+                                  style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '10px', minHeight: 44, color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font-mono)', fontWeight: 700, textAlign: 'right', outline: 'none' }}
+                                />
+                                <span style={{ fontSize: 12, color: 'var(--dim)', width: 16 }}>%</span>
+                              </div>
+                            ) : (
+                              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <span style={{ fontSize: 12, color: 'var(--dim)' }}>$</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max={poolTotal}
+                                  value={dollars}
+                                  onChange={e => updateFromDollar(period, Number(e.target.value))}
+                                  style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '10px', minHeight: 44, color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font-mono)', fontWeight: 700, textAlign: 'right', outline: 'none' }}
+                                />
+                              </div>
+                            )}
+                            <div style={{ width: 60, fontSize: 11, color: 'var(--muted)', textAlign: 'right', fontFamily: 'var(--font-mono)' }}>
+                              {settingsInputMode === 'percent' ? `$${dollars}` : `${pct}%`}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Total + Action buttons */}
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: isValid ? 'var(--green)' : 'var(--red)' }}>
+                          Total: {totalPct}%
+                        </div>
+                        {!isValid && (
+                          <div style={{ fontSize: 11, color: 'var(--red)' }}>
+                            {remainingPct > 0 ? `${remainingPct}% remaining` : `${Math.abs(remainingPct)}% over`}
+                          </div>
+                        )}
+                        {isValid && <div style={{ fontSize: 11, color: 'var(--green)' }}>✓ Valid</div>}
                       </div>
-                    );
-                  })()}
-                </div>
-              )}
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          type="button"
+                          onClick={splitEven}
+                          style={{ flex: 1, padding: '10px', minHeight: 44, fontSize: 12, fontWeight: 700, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer' }}
+                        >
+                          Split Even
+                        </button>
+                        {!isValid && remainingPct > 0 && (
+                          <button
+                            type="button"
+                            onClick={autoFillLast}
+                            style={{ flex: 1, padding: '10px', minHeight: 44, fontSize: 12, fontWeight: 700, borderRadius: 6, border: 'none', background: 'var(--green)', color: 'var(--bg)', cursor: 'pointer' }}
+                          >
+                            +{remainingPct}% to Final
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Save Button */}

@@ -216,47 +216,52 @@ export default function Players() {
   }
 
   return (
-    <div style={{ maxWidth: 1000, margin: '0 auto', padding: 24 }}>
+    <div style={{ maxWidth: 1000, margin: '0 auto', padding: 'clamp(12px, 4vw, 24px)' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link to="/" style={{
             background: 'none',
             border: '1px solid var(--border)',
             borderRadius: 8,
             color: 'var(--muted)',
-            padding: '6px 10px',
+            padding: '8px 12px',
             fontSize: 12,
             textDecoration: 'none',
+            minHeight: 40,
+            display: 'flex',
+            alignItems: 'center',
           }}>
             ← Pools
           </Link>
-          <div>
-            <h1 style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-mono)', margin: 0 }}>
-              Players & Groups
-            </h1>
-            <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>
-              {playerList.length} players • {groupList.length} groups
-            </p>
-          </div>
+          <button
+            onClick={() => activeTab === 'players' ? setShowCreate(true) : setShowCreateGroup(true)}
+            style={{ background: 'var(--green)', color: 'var(--bg)', border: 'none', borderRadius: 8, padding: '10px 16px', minHeight: 44, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+          >
+            + New {activeTab === 'players' ? 'Player' : 'Group'}
+          </button>
         </div>
-        <button
-          onClick={() => activeTab === 'players' ? setShowCreate(true) : setShowCreateGroup(true)}
-          style={{ background: 'var(--green)', color: 'var(--bg)', border: 'none', borderRadius: 8, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
-        >
-          + New {activeTab === 'players' ? 'Player' : 'Group'}
-        </button>
+        <div>
+          <h1 style={{ fontSize: 'clamp(18px, 5vw, 24px)', fontWeight: 800, fontFamily: 'var(--font-mono)', margin: 0 }}>
+            Players & Groups
+          </h1>
+          <p style={{ fontSize: 12, color: 'var(--muted)', margin: '4px 0 0' }}>
+            {playerList.length} players • {groupList.length} groups
+          </p>
+        </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: 'var(--surface)', borderRadius: 10, padding: 4, width: 'fit-content' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 16, background: 'var(--surface)', borderRadius: 10, padding: 4 }}>
         <button
           onClick={() => { setActiveTab('players'); setSelectedPlayer(null); }}
           style={{
+            flex: 1,
             background: activeTab === 'players' ? 'var(--bg)' : 'transparent',
             border: 'none',
             borderRadius: 8,
-            padding: '8px 16px',
+            padding: '10px 12px',
+            minHeight: 44,
             fontSize: 13,
             fontWeight: activeTab === 'players' ? 700 : 400,
             color: activeTab === 'players' ? 'var(--text)' : 'var(--muted)',
@@ -268,10 +273,12 @@ export default function Players() {
         <button
           onClick={() => { setActiveTab('groups'); setSelectedGroup(null); }}
           style={{
+            flex: 1,
             background: activeTab === 'groups' ? 'var(--bg)' : 'transparent',
             border: 'none',
             borderRadius: 8,
-            padding: '8px 16px',
+            padding: '10px 12px',
+            minHeight: 44,
             fontSize: 13,
             fontWeight: activeTab === 'groups' ? 700 : 400,
             color: activeTab === 'groups' ? 'var(--text)' : 'var(--muted)',
@@ -285,18 +292,18 @@ export default function Players() {
       {activeTab === 'players' ? (
         <>
           {/* Search */}
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 16 }}>
             <input
               placeholder="Search by name, phone, or email..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              style={{ width: '100%', maxWidth: 400, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+              style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', minHeight: 44, color: 'var(--text)', fontSize: 16, outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
 
-          <div style={{ display: 'flex', gap: 20 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Players list */}
-            <div style={{ width: 380, flexShrink: 0 }}>
+            <div>
               {playerList.length === 0 ? (
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 30, textAlign: 'center' }}>
                   <div style={{ fontSize: 32, marginBottom: 8 }}>👤</div>
@@ -349,7 +356,7 @@ export default function Players() {
             </div>
 
             {/* Player details */}
-            <div style={{ flex: 1 }}>
+            <div>
               {selectedPlayer ? (
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20 }}>
                   {editMode ? (
@@ -613,11 +620,11 @@ export default function Players() {
 
       {/* Create Player Modal */}
       {showCreate && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={() => setShowCreate(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, width: '100%', maxWidth: 400 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }} onClick={() => setShowCreate(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 'clamp(16px, 4vw, 24px)', width: '100%', maxWidth: 400 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h3 style={{ fontSize: 16, fontWeight: 800, fontFamily: 'var(--font-mono)', margin: 0 }}>New Player</h3>
-              <button onClick={() => setShowCreate(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18 }}>✕</button>
+              <button onClick={() => setShowCreate(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18, minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
             </div>
 
             {createError && (
@@ -627,32 +634,34 @@ export default function Players() {
             )}
 
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>NAME *</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>NAME *</div>
               <input
                 placeholder="John Smith"
                 value={newPlayer.name}
                 onChange={e => setNewPlayer({ ...newPlayer, name: e.target.value })}
-                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', minHeight: 44, color: 'var(--text)', fontSize: 16, outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
 
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>PHONE</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>PHONE</div>
               <input
                 placeholder="555-123-4567"
+                type="tel"
                 value={newPlayer.phone}
                 onChange={e => setNewPlayer({ ...newPlayer, phone: e.target.value })}
-                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', minHeight: 44, color: 'var(--text)', fontSize: 16, outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>EMAIL</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>EMAIL</div>
               <input
                 placeholder="john@example.com"
+                type="email"
                 value={newPlayer.email}
                 onChange={e => setNewPlayer({ ...newPlayer, email: e.target.value })}
-                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', minHeight: 44, color: 'var(--text)', fontSize: 16, outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
 
@@ -663,7 +672,7 @@ export default function Players() {
             <button
               onClick={handleCreatePlayer}
               disabled={!newPlayer.name.trim()}
-              style={{ width: '100%', background: 'var(--green)', color: 'var(--bg)', border: 'none', borderRadius: 8, padding: '12px', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: newPlayer.name.trim() ? 1 : 0.5 }}
+              style={{ width: '100%', background: 'var(--green)', color: 'var(--bg)', border: 'none', borderRadius: 8, padding: '12px 14px', minHeight: 48, fontSize: 15, fontWeight: 700, cursor: 'pointer', opacity: newPlayer.name.trim() ? 1 : 0.5 }}
             >
               Create Player
             </button>
@@ -673,43 +682,43 @@ export default function Players() {
 
       {/* Create Group Modal */}
       {showCreateGroup && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={() => setShowCreateGroup(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, width: '100%', maxWidth: 400 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }} onClick={() => setShowCreateGroup(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 'clamp(16px, 4vw, 24px)', width: '100%', maxWidth: 400 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h3 style={{ fontSize: 16, fontWeight: 800, fontFamily: 'var(--font-mono)', margin: 0 }}>Create Group</h3>
-              <button onClick={() => setShowCreateGroup(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18 }}>✕</button>
+              <button onClick={() => setShowCreateGroup(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18, minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>NAME *</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>NAME *</div>
               <input
                 placeholder="e.g. NFL Regulars"
                 value={newGroup.name}
                 onChange={e => setNewGroup({ ...newGroup, name: e.target.value })}
-                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', minHeight: 44, color: 'var(--text)', fontSize: 16, outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>DESCRIPTION</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>DESCRIPTION</div>
               <input
                 placeholder="e.g. Players who join every NFL pool"
                 value={newGroup.description}
                 onChange={e => setNewGroup({ ...newGroup, description: e.target.value })}
-                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', minHeight: 44, color: 'var(--text)', fontSize: 16, outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
 
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 8, fontFamily: 'var(--font-mono)' }}>COLOR</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 8, fontFamily: 'var(--font-mono)' }}>COLOR</div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {GROUP_COLORS.map(c => (
                   <button
                     key={c}
                     onClick={() => setNewGroup({ ...newGroup, color: c })}
                     style={{
-                      width: 28,
-                      height: 28,
+                      width: 36,
+                      height: 36,
                       borderRadius: '50%',
                       background: c,
                       border: newGroup.color === c ? '3px solid var(--text)' : '3px solid transparent',
@@ -723,7 +732,7 @@ export default function Players() {
             <button
               onClick={handleCreateGroup}
               disabled={!newGroup.name.trim()}
-              style={{ width: '100%', background: newGroup.color, color: 'var(--bg)', border: 'none', borderRadius: 8, padding: '12px', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: newGroup.name.trim() ? 1 : 0.5 }}
+              style={{ width: '100%', background: newGroup.color, color: 'var(--bg)', border: 'none', borderRadius: 8, padding: '12px 14px', minHeight: 48, fontSize: 15, fontWeight: 700, cursor: 'pointer', opacity: newGroup.name.trim() ? 1 : 0.5 }}
             >
               Create Group
             </button>
@@ -733,14 +742,14 @@ export default function Players() {
 
       {/* Edit Members Modal - Checkbox based */}
       {showAddMembers && selectedGroup && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={() => setShowAddMembers(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, width: '100%', maxWidth: 500, maxHeight: '80vh', overflowY: 'auto' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }} onClick={() => setShowAddMembers(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 'clamp(16px, 4vw, 24px)', width: '100%', maxWidth: 500, maxHeight: '85vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
                 <h3 style={{ fontSize: 16, fontWeight: 800, fontFamily: 'var(--font-mono)', margin: 0 }}>Edit Members</h3>
-                <p style={{ fontSize: 12, color: 'var(--muted)', margin: '4px 0 0' }}>Select players to add to {selectedGroup.name}</p>
+                <p style={{ fontSize: 12, color: 'var(--muted)', margin: '4px 0 0' }}>Select players for {selectedGroup.name}</p>
               </div>
-              <button onClick={() => setShowAddMembers(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18 }}>✕</button>
+              <button onClick={() => setShowAddMembers(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18, minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
             </div>
 
             {/* Selection stats */}
