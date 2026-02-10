@@ -1009,7 +1009,7 @@ export default function PoolDetail() {
                     } else if (isClaimed) {
                       borderStyle = `1px solid ${playerColor}40`;
                     } else {
-                      borderStyle = '1px solid var(--border)'; // Unclaimed: subtle border
+                      borderStyle = '2px solid var(--border)'; // Unclaimed: visible square border
                     }
 
                     // Determine background
@@ -1021,7 +1021,8 @@ export default function PoolDetail() {
                     } else if (isClaimed && playerColor) {
                       bgColor = `${playerColor}15`;
                     } else {
-                      bgColor = 'var(--surface)'; // Unclaimed: clean surface
+                      // Unclaimed squares: clean dark background with visible borders
+                      bgColor = 'var(--bg)';
                     }
 
                     return (
@@ -1046,7 +1047,13 @@ export default function PoolDetail() {
                             {cell.player_name?.split(' ')[0]?.substring(0, 3)?.toUpperCase()}
                           </span>
                         ) : (
-                          <span style={{ fontSize: 14, color: 'var(--dim)', opacity: 0.5 }}>+</span>
+                          <div style={{
+                            width: 12,
+                            height: 12,
+                            border: '2px solid var(--border)',
+                            borderRadius: 2,
+                            opacity: 0.4,
+                          }} />
                         )}
                         {winner && <div style={{ position: 'absolute', top: -3, right: -3, fontSize: 10 }}>🏆</div>}
                         {isPendingApproval && <div style={{ position: 'absolute', top: -3, right: -3, fontSize: 8 }}>⏳</div>}
