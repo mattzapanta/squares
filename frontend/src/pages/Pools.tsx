@@ -32,7 +32,7 @@ export default function Pools() {
   }, []);
 
   return (
-    <div style={{ maxWidth: 800, margin: '0 auto', padding: 24 }}>
+    <div style={{ maxWidth: 800, margin: '0 auto', padding: 'clamp(12px, 4vw, 24px)' }}>
       {/* Success message banner */}
       {successMessage && (
         <div style={{
@@ -50,66 +50,24 @@ export default function Pools() {
           </span>
           <button
             onClick={() => setSuccessMessage(null)}
-            style={{ background: 'none', border: 'none', color: 'var(--green)', cursor: 'pointer', fontSize: 16 }}
+            style={{ background: 'none', border: 'none', color: 'var(--green)', cursor: 'pointer', fontSize: 16, minWidth: 44, minHeight: 44 }}
           >
             ×
           </button>
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, fontFamily: 'var(--font-mono)', margin: 0, letterSpacing: -1 }}>
-            <span style={{ color: 'var(--green)' }}>■</span> SquaresHQ
-          </h1>
-          <p style={{ color: 'var(--muted)', fontSize: 13, margin: '4px 0 0' }}>
-            Welcome, {admin?.name}
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            onClick={() => navigate('/players')}
-            style={{
-              background: 'transparent',
-              color: 'var(--muted)',
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              padding: '8px 12px',
-              fontSize: 12,
-              fontFamily: 'var(--font-mono)',
-            }}
-          >
-            Players
-          </button>
-          <button
-            onClick={() => navigate('/groups')}
-            style={{
-              background: 'transparent',
-              color: 'var(--muted)',
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              padding: '8px 12px',
-              fontSize: 12,
-              fontFamily: 'var(--font-mono)',
-            }}
-          >
-            Groups
-          </button>
-          <button
-            onClick={() => navigate('/pools/new')}
-            style={{
-              background: 'var(--green)',
-              color: 'var(--bg)',
-              border: 'none',
-              borderRadius: 8,
-              padding: '8px 16px',
-              fontSize: 12,
-              fontWeight: 700,
-              fontFamily: 'var(--font-mono)',
-            }}
-          >
-            + NEW POOL
-          </button>
+      {/* Header - stacks on mobile */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h1 style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: 800, fontFamily: 'var(--font-mono)', margin: 0, letterSpacing: -1 }}>
+              <span style={{ color: 'var(--green)' }}>■</span> SquaresHQ
+            </h1>
+            <p style={{ color: 'var(--muted)', fontSize: 12, margin: '4px 0 0' }}>
+              Hi, {admin?.name?.split(' ')[0]}
+            </p>
+          </div>
           <button
             onClick={logout}
             style={{
@@ -118,10 +76,46 @@ export default function Pools() {
               border: '1px solid var(--border)',
               borderRadius: 8,
               padding: '8px 12px',
+              minHeight: 40,
               fontSize: 12,
             }}
           >
             Logout
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => navigate('/players')}
+            style={{
+              flex: 1,
+              background: 'transparent',
+              color: 'var(--muted)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              padding: '10px 12px',
+              minHeight: 44,
+              fontSize: 13,
+              fontFamily: 'var(--font-mono)',
+            }}
+          >
+            Players
+          </button>
+          <button
+            onClick={() => navigate('/pools/new')}
+            style={{
+              flex: 1,
+              background: 'var(--green)',
+              color: 'var(--bg)',
+              border: 'none',
+              borderRadius: 8,
+              padding: '10px 16px',
+              minHeight: 44,
+              fontSize: 13,
+              fontWeight: 700,
+              fontFamily: 'var(--font-mono)',
+            }}
+          >
+            + New Pool
           </button>
         </div>
       </div>
@@ -166,53 +160,37 @@ export default function Pools() {
                   background: 'var(--surface)',
                   border: '1px solid var(--border)',
                   borderRadius: 12,
-                  padding: '16px 20px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
+                  padding: 'clamp(12px, 3vw, 16px)',
+                  display: 'block',
                   textDecoration: 'none',
                   transition: 'border-color 0.15s',
                 }}
                 onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--green)')}
                 onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                {/* Top row: icon + teams + status */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                   <div style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 10,
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     background: `${sc.color}15`,
-                    fontSize: 22,
+                    fontSize: 18,
+                    flexShrink: 0,
                   }}>
                     {sc.icon}
                   </div>
-                  <div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {pool.away_team} vs {pool.home_team}
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-                      {sc.name} {pool.game_label && `• ${pool.game_label}`} • ${pool.denomination}/sq • {pool.player_count || 0} players
-                    </div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{
-                      fontSize: 13,
-                      fontWeight: 700,
-                      fontFamily: 'var(--font-mono)',
-                      color: pool.claimed_count === 100 ? 'var(--green)' : 'var(--gold)',
-                    }}>
-                      {pool.claimed_count || 0}/100
-                    </div>
-                    <div style={{ fontSize: 10, color: 'var(--dim)' }}>claimed</div>
                   </div>
                   <span style={{
                     display: 'inline-flex',
-                    padding: '2px 8px',
+                    padding: '3px 8px',
                     borderRadius: 20,
                     fontSize: 10,
                     fontWeight: 700,
@@ -221,10 +199,28 @@ export default function Pools() {
                     border: `1px solid ${pool.status === 'open' ? 'rgba(96, 165, 250, 0.25)' : pool.status === 'locked' ? 'rgba(74, 222, 128, 0.25)' : 'rgba(136, 137, 164, 0.25)'}`,
                     fontFamily: 'var(--font-mono)',
                     textTransform: 'uppercase',
+                    flexShrink: 0,
                   }}>
                     {pool.status}
                   </span>
-                  <span style={{ color: 'var(--dim)', fontSize: 18 }}>›</span>
+                </div>
+                {/* Bottom row: details + stats */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 46 }}>
+                  <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+                    {sc.name} {pool.game_label && `• ${pool.game_label}`} • ${pool.denomination}/sq
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 11, color: 'var(--dim)' }}>{pool.player_count || 0} players</span>
+                    <span style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      fontFamily: 'var(--font-mono)',
+                      color: pool.claimed_count === 100 ? 'var(--green)' : 'var(--gold)',
+                    }}>
+                      {pool.claimed_count || 0}/100
+                    </span>
+                    <span style={{ color: 'var(--dim)', fontSize: 16 }}>›</span>
+                  </div>
                 </div>
               </Link>
             );

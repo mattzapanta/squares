@@ -7,7 +7,6 @@ import Login from './pages/Login';
 import Pools from './pages/Pools';
 import PoolDetail from './pages/PoolDetail';
 import CreatePool from './pages/CreatePool';
-import Groups from './pages/Groups';
 import Players from './pages/Players';
 import PlayerPortal from './pages/PlayerPortal';
 
@@ -117,14 +116,6 @@ export default function App() {
                     element={
                       <ProtectedRoute>
                         <PoolDetail />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/groups"
-                    element={
-                      <ProtectedRoute>
-                        <Groups />
                       </ProtectedRoute>
                     }
                   />
