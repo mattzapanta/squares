@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
 import { PoolDetail as PoolDetailType, SPORTS_CONFIG, GridCell, PayoutStructure } from '../types';
-import { pools as poolsApi, squares, players as playersApi, scores as scoresApi, payments, SearchedPlayer, PlayerPaymentSummary, LiveScoreData, CurrentWinner, PlayerWalletBalance, PlayerInviteLink } from '../api/client';
+import { pools as poolsApi, squares, players as playersApi, scores as scoresApi, payments, allPlayers, SearchedPlayer, PlayerPaymentSummary, LiveScoreData, CurrentWinner, PlayerWalletBalance, PlayerInviteLink, PlayerWithStats } from '../api/client';
 
 // Cell Assignment Modal with inline player creation
 function CellAssignmentModal({
@@ -33,6 +33,19 @@ function CellAssignmentModal({
   const [showNewPlayer, setShowNewPlayer] = useState(false);
   const [inlinePlayer, setInlinePlayer] = useState({ name: '', phone: '', email: '' });
   const [creating, setCreating] = useState(false);
+  const [allPlayersList, setAllPlayersList] = useState<PlayerWithStats[]>([]);
+  const [loadingPlayers, setLoadingPlayers] = useState(true);
+
+  // Fetch all players when modal opens
+  useEffect(() => {
+    allPlayers.list().then(players => {
+      setAllPlayersList(players);
+      setLoadingPlayers(false);
+    }).catch(() => setLoadingPlayers(false));
+  }, []);
+
+  // Check if player is already in this pool
+  const isInPool = (playerId: string) => pool.players.some(p => p.id === playerId);
 
   const handleCreateAndAssign = async () => {
     if (!inlinePlayer.name || (!inlinePlayer.phone && !inlinePlayer.email)) return;
@@ -192,26 +205,37 @@ function CellAssignmentModal({
               Create New Player
             </button>
 
-            {pool.players.length === 0 ? (
+            {loadingPlayers ? (
+              <div style={{ textAlign: 'center', padding: 12, color: 'var(--dim)', fontSize: 12 }}>
+                Loading players...
+              </div>
+            ) : allPlayersList.length === 0 ? (
               <div style={{ textAlign: 'center', padding: 12, color: 'var(--dim)', fontSize: 12 }}>
                 No existing players. Create one above!
               </div>
             ) : (
               <>
-                <div style={{ fontSize: 10, color: 'var(--dim)', marginBottom: 6, fontFamily: 'var(--font-mono)' }}>EXISTING PLAYERS</div>
-                {pool.players.map(p => (
-                  <div
-                    key={p.id}
-                    onClick={() => onAssign(p.id)}
-                    style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--border)', marginBottom: 6 }}
-                  >
-                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: `${playerColors[p.id]}20`, color: playerColors[p.id], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800 }}>
-                      {p.name[0]}
+                <div style={{ fontSize: 10, color: 'var(--dim)', marginBottom: 6, fontFamily: 'var(--font-mono)' }}>SELECT A PLAYER</div>
+                {allPlayersList.map(p => {
+                  const inPool = isInPool(p.id);
+                  const poolPlayer = pool.players.find(pp => pp.id === p.id);
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => onAssign(p.id)}
+                      style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, border: `1px solid ${inPool ? 'var(--green)' : 'var(--border)'}`, marginBottom: 6 }}
+                    >
+                      <div style={{ width: 24, height: 24, borderRadius: '50%', background: inPool ? `${playerColors[p.id]}20` : 'var(--surface)', color: inPool ? playerColors[p.id] : 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800 }}>
+                        {p.name[0]}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700 }}>{p.name}</span>
+                        {!inPool && <span style={{ fontSize: 10, color: 'var(--dim)', marginLeft: 6 }}>+ add to pool</span>}
+                      </div>
+                      <span style={{ fontSize: 10, color: 'var(--dim)' }}>{inPool ? `${poolPlayer?.square_count || 0} sq` : ''}</span>
                     </div>
-                    <span style={{ fontSize: 12, fontWeight: 700 }}>{p.name}</span>
-                    <span style={{ fontSize: 10, color: 'var(--dim)', marginLeft: 'auto' }}>{p.square_count || 0} sq</span>
-                  </div>
-                ))}
+                  );
+                })}
               </>
             )}
           </div>
@@ -453,6 +477,15 @@ export default function PoolDetail() {
   const handleAssign = async (playerId: string) => {
     if (!selectedCell) return;
     try {
+      // Check if player is already in the pool
+      const isInPool = pool.players.some(p => p.id === playerId);
+
+      if (!isInPool) {
+        // Get player details to add them to the pool
+        const playerDetails = await allPlayers.get(playerId);
+        await playersApi.add(pool.id, playerDetails.name, playerDetails.phone || undefined, playerDetails.email || undefined);
+      }
+
       await squares.assign(pool.id, selectedCell.r, selectedCell.c, playerId);
       setSelectedCell(null);
       loadPool();
