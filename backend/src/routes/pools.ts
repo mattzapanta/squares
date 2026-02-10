@@ -38,6 +38,7 @@ router.get('/', async (req: AuthRequest, res) => {
 
 // Create pool
 router.post('/', validate(schemas.createPool), async (req: AuthRequest, res) => {
+  console.log('POST /pools - Creating pool for admin:', req.admin!.id, req.admin!.email);
   try {
     const pool = await withTransaction(async (client) => {
       const result = await client.query<Pool>(
@@ -102,12 +103,19 @@ router.post('/', validate(schemas.createPool), async (req: AuthRequest, res) => 
 // Get pool detail
 router.get('/:id', async (req: AuthRequest, res) => {
   try {
+    console.log('GET /pools/:id - pool_id:', req.params.id, 'admin_id:', req.admin!.id, 'admin_email:', req.admin!.email);
+
     const poolResult = await query<Pool>(
       'SELECT * FROM pools WHERE id = $1 AND admin_id = $2',
       [req.params.id, req.admin!.id]
     );
 
+    console.log('Pool query result rows:', poolResult.rows.length);
+
     if (poolResult.rows.length === 0) {
+      // Debug: Check if pool exists at all
+      const anyPool = await query('SELECT id, admin_id FROM pools WHERE id = $1', [req.params.id]);
+      console.log('Pool exists check:', anyPool.rows.length > 0 ? `Yes, admin_id=${anyPool.rows[0]?.admin_id}` : 'No');
       return res.status(404).json({ error: 'Pool not found' });
     }
 
