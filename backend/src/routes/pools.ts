@@ -169,6 +169,20 @@ router.patch('/:id', validate(schemas.updatePool), async (req: AuthRequest, res)
     }
 
     const oldPool = currentPool.rows[0];
+
+    // Prevent modifying critical settings after pool is locked
+    if (oldPool.status !== 'open') {
+      const lockedFields = ['denomination', 'max_per_player', 'payout_structure', 'custom_payouts', 'ot_rule'];
+      const attemptedLockedChanges = lockedFields.filter(f => req.body[f] !== undefined);
+      if (attemptedLockedChanges.length > 0) {
+        return res.status(400).json({
+          error: 'Cannot modify pool settings after grid is locked',
+          lockedFields: attemptedLockedChanges,
+          status: oldPool.status,
+        });
+      }
+    }
+
     const newDenomination = req.body.denomination;
     let refundsProcessed: { playerId: string; playerName: string; refundAmount: number }[] = [];
 

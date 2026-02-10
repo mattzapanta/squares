@@ -263,7 +263,7 @@ router.post('/:playerId/deadbeat', async (req: AuthRequest, res) => {
 
       // Release all squares (both claimed and pending)
       await client.query(
-        `UPDATE squares SET player_id = NULL, claim_status = 'available', released_at = NOW(), requested_at = NULL
+        `UPDATE squares SET player_id = NULL, claim_status = 'available', released_at = NOW()
          WHERE pool_id = $1 AND player_id = $2`,
         [poolId, playerId]
       );
@@ -358,7 +358,7 @@ router.delete('/:playerId', async (req: AuthRequest, res) => {
 
       // Release squares (set claim_status to available)
       await client.query(
-        `UPDATE squares SET player_id = NULL, claim_status = 'available', released_at = NOW(), requested_at = NULL
+        `UPDATE squares SET player_id = NULL, claim_status = 'available', released_at = NOW()
          WHERE pool_id = $1 AND player_id = $2`,
         [poolId, playerId]
       );

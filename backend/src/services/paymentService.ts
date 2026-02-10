@@ -140,15 +140,25 @@ export async function recordPoolPayment(
       ]
     );
 
-    // Mark player as paid (confirmed) if they have squares
+    // Update amount_paid and payment status
+    // First get the cumulative amount paid from ledger
+    const cumulativePaidResult = await client.query(
+      `SELECT COALESCE(SUM(ABS(amount)), 0) as total_paid
+       FROM ledger
+       WHERE pool_id = $1 AND player_id = $2 AND type = 'buy_in'`,
+      [poolId, playerId]
+    );
+    const cumulativePaid = parseInt(cumulativePaidResult.rows[0].total_paid);
+
     const totalSquaresNow = currentSquares + squaresAssigned;
-    if (totalSquaresNow > 0) {
-      await client.query(
-        `UPDATE pool_players SET paid = true, payment_status = 'confirmed'
-         WHERE pool_id = $1 AND player_id = $2`,
-        [poolId, playerId]
-      );
-    }
+    const totalOwed = totalSquaresNow * denomination;
+    const isFullyPaid = cumulativePaid >= totalOwed;
+
+    await client.query(
+      `UPDATE pool_players SET amount_paid = $1, paid = $2, payment_status = $3
+       WHERE pool_id = $4 AND player_id = $5`,
+      [cumulativePaid, isFullyPaid, isFullyPaid ? 'confirmed' : 'pending', poolId, playerId]
+    );
 
     // Get player name for audit
     const playerResult = await client.query('SELECT name FROM players WHERE id = $1', [playerId]);
@@ -298,12 +308,22 @@ export async function recordMultiPoolPayment(
       );
       ledgerEntryIds.push(ledgerResult.rows[0].id);
 
-      // Update payment status
+      // Update amount_paid and payment status
       if (squaresToAssign > 0) {
-        await client.query(
-          `UPDATE pool_players SET paid = true, payment_status = 'confirmed'
-           WHERE pool_id = $1 AND player_id = $2`,
+        const cumulativePaidResult = await client.query(
+          `SELECT COALESCE(SUM(ABS(amount)), 0) as total_paid
+           FROM ledger
+           WHERE pool_id = $1 AND player_id = $2 AND type = 'buy_in'`,
           [poolId, playerId]
+        );
+        const cumulativePaid = parseInt(cumulativePaidResult.rows[0].total_paid);
+        const totalOwed = (currentSquares + squaresToAssign) * pool.denomination;
+        const isFullyPaid = cumulativePaid >= totalOwed;
+
+        await client.query(
+          `UPDATE pool_players SET amount_paid = $1, paid = $2, payment_status = $3
+           WHERE pool_id = $4 AND player_id = $5`,
+          [cumulativePaid, isFullyPaid, isFullyPaid ? 'confirmed' : 'pending', poolId, playerId]
         );
       }
 
@@ -550,11 +570,21 @@ export async function autoDistributePayment(
           ]
         );
 
-        // Update payment status
-        await client.query(
-          `UPDATE pool_players SET paid = true, payment_status = 'confirmed'
-           WHERE pool_id = $1 AND player_id = $2`,
+        // Update amount_paid and payment status
+        const cumulativePaidResult = await client.query(
+          `SELECT COALESCE(SUM(ABS(amount)), 0) as total_paid
+           FROM ledger
+           WHERE pool_id = $1 AND player_id = $2 AND type = 'buy_in'`,
           [pool.id, playerId]
+        );
+        const cumulativePaid = parseInt(cumulativePaidResult.rows[0].total_paid);
+        const totalOwed = (currentSquares + squaresToAssign) * pool.denomination;
+        const isFullyPaid = cumulativePaid >= totalOwed;
+
+        await client.query(
+          `UPDATE pool_players SET amount_paid = $1, paid = $2, payment_status = $3
+           WHERE pool_id = $4 AND player_id = $5`,
+          [cumulativePaid, isFullyPaid, isFullyPaid ? 'confirmed' : 'pending', pool.id, playerId]
         );
 
         poolsUpdated.push({
@@ -634,10 +664,21 @@ export async function autoDistributePayment(
           ]
         );
 
-        await client.query(
-          `UPDATE pool_players SET paid = true, payment_status = 'confirmed'
-           WHERE pool_id = $1 AND player_id = $2`,
+        // Update amount_paid and payment status
+        const cumulativePaidResult = await client.query(
+          `SELECT COALESCE(SUM(ABS(amount)), 0) as total_paid
+           FROM ledger
+           WHERE pool_id = $1 AND player_id = $2 AND type = 'buy_in'`,
           [pool.id, playerId]
+        );
+        const cumulativePaid = parseInt(cumulativePaidResult.rows[0].total_paid);
+        const totalOwed = (currentSquares + squaresToAssign) * pool.denomination;
+        const isFullyPaid = cumulativePaid >= totalOwed;
+
+        await client.query(
+          `UPDATE pool_players SET amount_paid = $1, paid = $2, payment_status = $3
+           WHERE pool_id = $4 AND player_id = $5`,
+          [cumulativePaid, isFullyPaid, isFullyPaid ? 'confirmed' : 'pending', pool.id, playerId]
         );
 
         poolsUpdated.push({

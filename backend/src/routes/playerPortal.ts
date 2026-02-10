@@ -250,7 +250,7 @@ router.get('/:token/ledger', authenticatePlayer, async (req: AuthRequest, res) =
     const result = await query(
       `SELECT l.*, p.name as pool_name
        FROM ledger l
-       JOIN pools p ON l.pool_id = p.id
+       LEFT JOIN pools p ON l.pool_id = p.id
        WHERE l.player_id = $1
        ORDER BY l.created_at DESC`,
       [player.id]
