@@ -40,6 +40,7 @@ export interface Pool {
   game_label: string | null;
   denomination: number;
   payout_structure: PayoutStructure;
+  custom_payouts?: Record<string, number>;
   tip_pct: number;
   max_per_player: number;
   approval_threshold: number;

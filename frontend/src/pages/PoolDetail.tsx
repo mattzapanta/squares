@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
 import { PoolDetail as PoolDetailType, SPORTS_CONFIG, GridCell, PayoutStructure } from '../types';
 import { pools as poolsApi, squares, players as playersApi, scores as scoresApi, payments, SearchedPlayer, PlayerPaymentSummary, LiveScoreData, CurrentWinner, PlayerWalletBalance, PlayerInviteLink } from '../api/client';
@@ -224,6 +224,7 @@ function CellAssignmentModal({
 export default function PoolDetail() {
   const { id } = useParams<{ id: string }>();
   const { admin } = useAuth();
+  const navigate = useNavigate();
   const [pool, setPool] = useState<PoolDetailType | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'grid' | 'players' | 'audit' | 'settings'>('grid');
@@ -258,6 +259,7 @@ export default function PoolDetail() {
   const [settingsMaxPerPlayer, setSettingsMaxPerPlayer] = useState<number>(10);
   const [settingsTipPct, setSettingsTipPct] = useState<number>(10);
   const [settingsPayoutStructure, setSettingsPayoutStructure] = useState<PayoutStructure>('standard');
+  const [settingsCustomPayouts, setSettingsCustomPayouts] = useState<Record<string, number>>({});
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState<{ success: boolean; text: string } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -284,6 +286,14 @@ export default function PoolDetail() {
       setSettingsMaxPerPlayer(data.max_per_player);
       setSettingsTipPct(data.tip_pct);
       setSettingsPayoutStructure(data.payout_structure);
+      // Initialize custom payouts from pool data or generate defaults based on sport
+      const sportConfig = SPORTS_CONFIG[data.sport as keyof typeof SPORTS_CONFIG];
+      const periods = sportConfig?.periods || ['Q1', 'Q2', 'Q3', 'Q4'];
+      const defaultPayouts: Record<string, number> = {};
+      periods.forEach((p, i) => {
+        defaultPayouts[p.toLowerCase()] = Math.floor(100 / periods.length) + (i === periods.length - 1 ? 100 % periods.length : 0);
+      });
+      setSettingsCustomPayouts(data.custom_payouts || defaultPayouts);
     } catch (error) {
       console.error('Failed to load pool:', error);
     } finally {
@@ -981,8 +991,9 @@ export default function PoolDetail() {
                   {pool.grid.map((row, r) => row.map((cell, c) => {
                     const isSelected = selectedCell?.r === r && selectedCell?.c === c;
                     const isPendingApproval = cell?.claim_status === 'pending';
-                    const isUnpaid = cell && !pool.players.find(p => p.id === cell.player_id)?.paid;
-                    const color = cell?.player_id ? playerColors[cell.player_id] || 'var(--muted)' : 'transparent';
+                    const isClaimed = !!cell?.player_id;
+                    const isUnpaid = isClaimed && !pool.players.find(p => p.id === cell.player_id)?.paid;
+                    const playerColor = isClaimed ? (playerColors[cell!.player_id!] || 'var(--muted)') : null;
                     const winner = pool.winners.find(w => w.square_row === r && w.square_col === c);
 
                     // Determine border style
@@ -990,13 +1001,27 @@ export default function PoolDetail() {
                     if (winner) {
                       borderStyle = '2px solid var(--gold)';
                     } else if (isSelected) {
-                      borderStyle = `2px solid ${color}`;
+                      borderStyle = `2px solid ${isClaimed ? playerColor : 'var(--green)'}`;
                     } else if (isPendingApproval) {
                       borderStyle = '2px dashed #A78BFA'; // purple for pending approval
                     } else if (isUnpaid && cell?.claim_status === 'claimed') {
                       borderStyle = '1px dashed var(--orange)';
+                    } else if (isClaimed) {
+                      borderStyle = `1px solid ${playerColor}40`;
                     } else {
-                      borderStyle = `1px solid ${cell ? `${color}30` : 'transparent'}`;
+                      borderStyle = '1px solid var(--border)'; // Unclaimed: subtle border
+                    }
+
+                    // Determine background
+                    let bgColor: string;
+                    if (winner) {
+                      bgColor = 'rgba(251, 191, 36, 0.2)';
+                    } else if (isPendingApproval) {
+                      bgColor = 'rgba(167, 139, 250, 0.15)';
+                    } else if (isClaimed && playerColor) {
+                      bgColor = `${playerColor}15`;
+                    } else {
+                      bgColor = 'var(--surface)'; // Unclaimed: clean surface
                     }
 
                     return (
@@ -1009,19 +1034,19 @@ export default function PoolDetail() {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          background: winner ? 'rgba(251, 191, 36, 0.2)' : isPendingApproval ? 'rgba(167, 139, 250, 0.15)' : cell ? `${color}15` : 'var(--surface)',
+                          background: bgColor,
                           border: borderStyle,
                           borderRadius: 3,
                           cursor: 'pointer',
                           position: 'relative',
                         }}
                       >
-                        {cell?.player_id ? (
-                          <span style={{ fontSize: 9, fontWeight: 800, color: isPendingApproval ? '#A78BFA' : isUnpaid ? 'var(--orange)' : color, fontFamily: 'var(--font-mono)' }}>
+                        {isClaimed ? (
+                          <span style={{ fontSize: 9, fontWeight: 800, color: isPendingApproval ? '#A78BFA' : isUnpaid ? 'var(--orange)' : playerColor || 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
                             {cell.player_name?.split(' ')[0]?.substring(0, 3)?.toUpperCase()}
                           </span>
                         ) : (
-                          <span style={{ fontSize: 10, color: 'var(--dim)' }}>+</span>
+                          <span style={{ fontSize: 14, color: 'var(--dim)', opacity: 0.5 }}>+</span>
                         )}
                         {winner && <div style={{ position: 'absolute', top: -3, right: -3, fontSize: 10 }}>🏆</div>}
                         {isPendingApproval && <div style={{ position: 'absolute', top: -3, right: -3, fontSize: 8 }}>⏳</div>}
@@ -1315,17 +1340,20 @@ export default function PoolDetail() {
                             ${paid} / ${owed}
                           </div>
                           <input
+                            id={`payment-${p.id}`}
                             type="number"
                             min="0"
-                            placeholder="$"
-                            style={{ width: 50, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px', fontSize: 10, color: 'var(--fg)', fontFamily: 'var(--font-mono)', textAlign: 'center' }}
+                            max={owed}
+                            placeholder={remaining > 0 ? `$${remaining}` : '$0'}
+                            style={{ width: 60, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px', fontSize: 10, color: 'var(--fg)', fontFamily: 'var(--font-mono)', textAlign: 'center' }}
                             onKeyDown={async (e) => {
                               if (e.key === 'Enter') {
                                 const input = e.target as HTMLInputElement;
                                 const newAmount = parseInt(input.value) || 0;
-                                if (newAmount >= 0) {
+                                const totalPaid = paid + newAmount;
+                                if (newAmount > 0) {
                                   try {
-                                    await playersApi.updatePayment(pool.id, p.id, newAmount >= owed, undefined, newAmount);
+                                    await playersApi.updatePayment(pool.id, p.id, totalPaid >= owed, undefined, totalPaid);
                                     input.value = '';
                                     loadPool();
                                   } catch (err) {
@@ -1335,13 +1363,33 @@ export default function PoolDetail() {
                               }
                             }}
                           />
+                          <button
+                            onClick={async () => {
+                              const input = document.getElementById(`payment-${p.id}`) as HTMLInputElement;
+                              const newAmount = parseInt(input?.value) || 0;
+                              const totalPaid = paid + newAmount;
+                              if (newAmount > 0) {
+                                try {
+                                  await playersApi.updatePayment(pool.id, p.id, totalPaid >= owed, undefined, totalPaid);
+                                  if (input) input.value = '';
+                                  loadPool();
+                                } catch (err) {
+                                  alert('Failed to update payment');
+                                }
+                              }
+                            }}
+                            style={{ background: 'var(--blue)', border: 'none', borderRadius: 4, padding: '4px 8px', fontSize: 9, color: '#fff', fontFamily: 'var(--font-mono)', cursor: 'pointer', fontWeight: 600 }}
+                            title="Add this payment amount"
+                          >
+                            +Pay
+                          </button>
                           {!isFullyPaid && owed > 0 && (
                             <button
                               onClick={() => handleTogglePayment(p.id, false)}
-                              style={{ background: 'var(--green)', border: 'none', borderRadius: 4, padding: '4px 6px', fontSize: 9, color: 'var(--bg)', fontFamily: 'var(--font-mono)', cursor: 'pointer' }}
+                              style={{ background: 'var(--green)', border: 'none', borderRadius: 4, padding: '4px 8px', fontSize: 9, color: 'var(--bg)', fontFamily: 'var(--font-mono)', cursor: 'pointer', fontWeight: 600 }}
                               title="Mark as fully paid"
                             >
-                              Full
+                              Paid✓
                             </button>
                           )}
                         </div>
@@ -1876,7 +1924,20 @@ export default function PoolDetail() {
               </label>
               <select
                 value={settingsPayoutStructure}
-                onChange={e => setSettingsPayoutStructure(e.target.value as PayoutStructure)}
+                onChange={e => {
+                  const newStructure = e.target.value as PayoutStructure;
+                  setSettingsPayoutStructure(newStructure);
+                  // Initialize custom payouts if switching to custom and they're empty
+                  if (newStructure === 'custom' && Object.keys(settingsCustomPayouts).length === 0 && pool) {
+                    const sportConfig = SPORTS_CONFIG[pool.sport as keyof typeof SPORTS_CONFIG];
+                    const periods = sportConfig?.periods || ['Q1', 'Q2', 'Q3', 'Q4'];
+                    const defaultPayouts: Record<string, number> = {};
+                    periods.forEach((p, i) => {
+                      defaultPayouts[p.toLowerCase()] = Math.floor(100 / periods.length) + (i === periods.length - 1 ? 100 % periods.length : 0);
+                    });
+                    setSettingsCustomPayouts(defaultPayouts);
+                  }
+                }}
                 style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, color: 'var(--text)', fontSize: 14 }}
               >
                 <option value="standard">Standard (Equal split)</option>
@@ -1885,6 +1946,45 @@ export default function PoolDetail() {
                 <option value="reverse">Reverse (40% Q1, decreasing)</option>
                 <option value="custom">Custom</option>
               </select>
+
+              {/* Custom Payouts Editor */}
+              {settingsPayoutStructure === 'custom' && (
+                <div style={{ marginTop: 12, padding: 12, background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', marginBottom: 8 }}>
+                    CUSTOM PERCENTAGES (must total 100%)
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {Object.entries(settingsCustomPayouts).map(([period, pct]) => (
+                      <div key={period} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-mono)', width: 30 }}>
+                          {period.toUpperCase()}
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={pct}
+                          onChange={e => setSettingsCustomPayouts(prev => ({
+                            ...prev,
+                            [period]: parseInt(e.target.value) || 0
+                          }))}
+                          style={{ width: 50, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 8px', fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font-mono)', textAlign: 'center' }}
+                        />
+                        <span style={{ fontSize: 11, color: 'var(--dim)' }}>%</span>
+                      </div>
+                    ))}
+                  </div>
+                  {(() => {
+                    const total = Object.values(settingsCustomPayouts).reduce((sum, pct) => sum + pct, 0);
+                    const isValid = Math.abs(total - 100) < 0.01;
+                    return (
+                      <div style={{ marginTop: 8, fontSize: 11, color: isValid ? 'var(--green)' : 'var(--red)', fontFamily: 'var(--font-mono)' }}>
+                        Total: {total}% {isValid ? '✓' : '(must be 100%)'}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
 
             {/* Save Button */}
@@ -1893,11 +1993,20 @@ export default function PoolDetail() {
                 setSettingsSaving(true);
                 setSettingsMessage(null);
                 try {
+                  // Validate custom payouts total 100% before saving
+                  if (settingsPayoutStructure === 'custom') {
+                    const total = Object.values(settingsCustomPayouts).reduce((sum, pct) => sum + pct, 0);
+                    if (Math.abs(total - 100) >= 0.01) {
+                      throw new Error(`Custom payouts must total 100% (currently ${total}%)`);
+                    }
+                  }
+
                   const result = await poolsApi.update(pool.id, {
                     denomination: settingsDenomination,
                     max_per_player: settingsMaxPerPlayer,
                     tip_pct: settingsTipPct,
                     payout_structure: settingsPayoutStructure,
+                    ...(settingsPayoutStructure === 'custom' && { custom_payouts: settingsCustomPayouts }),
                   });
 
                   const refundsProcessed = (result as any).refundsProcessed;
@@ -1941,84 +2050,93 @@ export default function PoolDetail() {
               🚨 DANGER ZONE
             </h4>
 
-            {!showDeleteConfirm ? (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              style={{
+                background: 'transparent',
+                color: 'var(--red)',
+                border: '1px solid var(--red)',
+                borderRadius: 8,
+                padding: '12px 20px',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              🗑️ Delete Pool
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Pool Modal */}
+      {showDeleteConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={() => !deleting && setShowDeleteConfirm(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--red)', borderRadius: 16, padding: 28, width: '100%', maxWidth: 400, textAlign: 'center' }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>🗑️</div>
+            <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--red)', marginBottom: 12 }}>Delete Pool?</h3>
+            <p style={{ fontSize: 14, color: 'var(--text)', marginBottom: 8 }}>
+              This will permanently delete <strong>{pool.name}</strong>
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 24 }}>
+              All players who have paid will be automatically refunded to their wallet. This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
               <button
-                onClick={() => setShowDeleteConfirm(true)}
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
                 style={{
+                  flex: 1,
                   background: 'transparent',
-                  color: 'var(--red)',
-                  border: '1px solid var(--red)',
+                  color: 'var(--muted)',
+                  border: '1px solid var(--border)',
                   borderRadius: 8,
-                  padding: '12px 20px',
-                  fontSize: 12,
+                  padding: '14px',
+                  fontSize: 14,
                   fontWeight: 700,
-                  cursor: 'pointer',
+                  cursor: deleting ? 'not-allowed' : 'pointer',
                 }}
               >
-                🗑️ Delete Pool
+                Cancel
               </button>
-            ) : (
-              <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--red)', borderRadius: 8, padding: 16 }}>
-                <p style={{ fontSize: 13, color: 'var(--text)', marginBottom: 12 }}>
-                  Are you sure you want to delete this pool? This action cannot be undone.
-                </p>
-                <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 16 }}>
-                  All players who have paid will be automatically refunded to their wallet.
-                </p>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    onClick={async () => {
-                      setDeleting(true);
-                      try {
-                        const result = await poolsApi.delete(pool.id);
-                        const res = result as any;
-                        if (res.refundsProcessed && res.refundsProcessed.length > 0) {
-                          alert(`Pool deleted. ${res.refundsProcessed.length} player(s) refunded $${res.totalRefunded} total.`);
-                        } else {
-                          alert('Pool deleted successfully.');
-                        }
-                        window.location.href = '/pools';
-                      } catch (error) {
-                        alert(error instanceof Error ? error.message : 'Failed to delete pool');
-                      } finally {
-                        setDeleting(false);
+              <button
+                onClick={async () => {
+                  setDeleting(true);
+                  try {
+                    const result = await poolsApi.delete(pool.id);
+                    const res = result as any;
+                    // Navigate to pools list with success message in state
+                    navigate('/pools', {
+                      state: {
+                        message: res.refundsProcessed?.length > 0
+                          ? `Pool deleted. ${res.refundsProcessed.length} player(s) refunded $${res.totalRefunded} total.`
+                          : 'Pool deleted successfully.'
                       }
-                    }}
-                    disabled={deleting}
-                    style={{
-                      flex: 1,
-                      background: 'var(--red)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 8,
-                      padding: '10px',
-                      fontSize: 12,
-                      fontWeight: 700,
-                      cursor: deleting ? 'not-allowed' : 'pointer',
-                      opacity: deleting ? 0.6 : 1,
-                    }}
-                  >
-                    {deleting ? 'Deleting...' : 'Yes, Delete Pool'}
-                  </button>
-                  <button
-                    onClick={() => setShowDeleteConfirm(false)}
-                    style={{
-                      flex: 1,
-                      background: 'transparent',
-                      color: 'var(--muted)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 8,
-                      padding: '10px',
-                      fontSize: 12,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
+                    });
+                  } catch (error) {
+                    setShowDeleteConfirm(false);
+                    setDeleting(false);
+                    // Show error inline instead of alert
+                    alert(error instanceof Error ? error.message : 'Failed to delete pool');
+                  }
+                }}
+                disabled={deleting}
+                style={{
+                  flex: 1,
+                  background: 'var(--red)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '14px',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: deleting ? 'not-allowed' : 'pointer',
+                  opacity: deleting ? 0.6 : 1,
+                }}
+              >
+                {deleting ? 'Deleting...' : 'Yes, Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Pool, SPORTS_CONFIG } from '../types';
 import { pools as poolsApi } from '../api/client';
 import { useAuth } from '../App';
@@ -7,8 +7,22 @@ import { useAuth } from '../App';
 export default function Pools() {
   const [pools, setPools] = useState<Pool[]>([]);
   const [loading, setLoading] = useState(true);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { admin, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    // Check for success message from navigation state (e.g., after deleting a pool)
+    const state = location.state as { message?: string } | null;
+    if (state?.message) {
+      setSuccessMessage(state.message);
+      // Clear the state so message doesn't show again on refresh
+      window.history.replaceState({}, document.title);
+      // Auto-hide after 5 seconds
+      setTimeout(() => setSuccessMessage(null), 5000);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     poolsApi.list()
@@ -19,6 +33,30 @@ export default function Pools() {
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto', padding: 24 }}>
+      {/* Success message banner */}
+      {successMessage && (
+        <div style={{
+          background: 'rgba(74, 222, 128, 0.15)',
+          border: '1px solid var(--green)',
+          borderRadius: 8,
+          padding: '12px 16px',
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <span style={{ color: 'var(--green)', fontSize: 13, fontWeight: 600 }}>
+            ✓ {successMessage}
+          </span>
+          <button
+            onClick={() => setSuccessMessage(null)}
+            style={{ background: 'none', border: 'none', color: 'var(--green)', cursor: 'pointer', fontSize: 16 }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 800, fontFamily: 'var(--font-mono)', margin: 0, letterSpacing: -1 }}>
