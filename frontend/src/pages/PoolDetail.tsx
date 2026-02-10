@@ -66,10 +66,10 @@ function CellAssignmentModal({
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18 }}>✕</button>
         </div>
 
-        {selectedCellData ? (
+        {selectedCellData?.player_id ? (
           <div>
             <div style={{ background: 'var(--bg)', borderRadius: 8, padding: 14, display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${playerColors[selectedCellData.player_id!]}20`, color: playerColors[selectedCellData.player_id!], display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13 }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${playerColors[selectedCellData.player_id]}20`, color: playerColors[selectedCellData.player_id], display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13 }}>
                 {selectedCellData.player_name?.[0]}
               </div>
               <div>
