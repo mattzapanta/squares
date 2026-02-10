@@ -89,8 +89,8 @@ function CellAssignmentModal({
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, width: '100%', maxWidth: 400, maxHeight: '80vh', overflowY: 'auto' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 'clamp(16px, 4vw, 24px)', width: '100%', maxWidth: 400, maxHeight: '85vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h3 style={{ fontSize: 16, fontWeight: 800, fontFamily: 'var(--font-mono)', margin: 0 }}>
             Square ({selectedCell.r}, {selectedCell.c})
@@ -122,13 +122,13 @@ function CellAssignmentModal({
               <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                 <button
                   onClick={() => { onApprove(selectedCell.r, selectedCell.c); onClose(); }}
-                  style={{ flex: 1, background: 'var(--green)', color: 'var(--bg)', border: 'none', borderRadius: 8, padding: '10px', fontSize: 12, fontWeight: 700 }}
+                  style={{ flex: 1, background: 'var(--green)', color: 'var(--bg)', border: 'none', borderRadius: 8, padding: '10px', minHeight: 44, fontSize: 13, fontWeight: 700 }}
                 >
                   ✓ Approve
                 </button>
                 <button
                   onClick={() => { onReject(selectedCell.r, selectedCell.c); onClose(); }}
-                  style={{ flex: 1, background: 'transparent', color: 'var(--red)', border: '1px solid var(--red)', borderRadius: 8, padding: '10px', fontSize: 12, fontWeight: 700 }}
+                  style={{ flex: 1, background: 'transparent', color: 'var(--red)', border: '1px solid var(--red)', borderRadius: 8, padding: '10px', minHeight: 44, fontSize: 13, fontWeight: 700 }}
                 >
                   ✗ Reject
                 </button>
@@ -136,7 +136,7 @@ function CellAssignmentModal({
             )}
             <button
               onClick={onRelease}
-              style={{ width: '100%', background: 'transparent', color: 'var(--red)', border: '1px solid var(--red)', borderRadius: 8, padding: '10px', fontSize: 12, fontWeight: 700 }}
+              style={{ width: '100%', background: 'transparent', color: 'var(--red)', border: '1px solid var(--red)', borderRadius: 8, padding: '10px', minHeight: 44, fontSize: 13, fontWeight: 700 }}
             >
               Release Square
             </button>
@@ -150,32 +150,34 @@ function CellAssignmentModal({
                 ← Back to list
               </button>
             </div>
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 4, fontFamily: 'var(--font-mono)' }}>FULL NAME *</div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>FULL NAME *</div>
               <input
                 placeholder="First Last (e.g. John Smith)"
                 value={inlinePlayer.name}
                 onChange={e => setInlinePlayer({ ...inlinePlayer, name: e.target.value })}
                 autoFocus
-                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', minHeight: 44, color: 'var(--text)', fontSize: 16, outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 4, fontFamily: 'var(--font-mono)' }}>PHONE</div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>PHONE</div>
               <input
                 placeholder="(555) 123-4567"
                 value={inlinePlayer.phone}
                 onChange={e => setInlinePlayer({ ...inlinePlayer, phone: e.target.value })}
-                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+                type="tel"
+                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', minHeight: 44, color: 'var(--text)', fontSize: 16, outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 4, fontFamily: 'var(--font-mono)' }}>EMAIL</div>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>EMAIL</div>
               <input
                 placeholder="john@email.com"
                 value={inlinePlayer.email}
                 onChange={e => setInlinePlayer({ ...inlinePlayer, email: e.target.value })}
-                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+                type="email"
+                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', minHeight: 44, color: 'var(--text)', fontSize: 16, outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
             <button
@@ -187,8 +189,9 @@ function CellAssignmentModal({
                 color: 'var(--bg)',
                 border: 'none',
                 borderRadius: 8,
-                padding: '12px',
-                fontSize: 13,
+                padding: '12px 14px',
+                minHeight: 48,
+                fontSize: 15,
                 fontWeight: 700,
                 opacity: (!inlinePlayer.name || (!inlinePlayer.phone && !inlinePlayer.email) || creating) ? 0.5 : 1,
               }}
@@ -210,17 +213,18 @@ function CellAssignmentModal({
                 border: '1px dashed var(--green)',
                 borderRadius: 8,
                 padding: '12px 14px',
+                minHeight: 48,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
-                marginBottom: 10,
+                gap: 10,
+                marginBottom: 12,
                 color: 'var(--green)',
-                fontSize: 12,
+                fontSize: 14,
                 fontWeight: 700,
               }}
             >
-              <span style={{ fontSize: 16 }}>+</span>
+              <span style={{ fontSize: 18 }}>+</span>
               Create New Player
             </button>
 
@@ -242,7 +246,7 @@ function CellAssignmentModal({
                     <div
                       key={p.id}
                       onClick={() => onAssign(p.id)}
-                      style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, border: `1px solid ${inPool ? 'var(--green)' : 'var(--border)'}`, marginBottom: 6 }}
+                      style={{ background: 'var(--bg)', borderRadius: 8, padding: '12px 14px', minHeight: 48, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, border: `1px solid ${inPool ? 'var(--green)' : 'var(--border)'}`, marginBottom: 8 }}
                     >
                       <div style={{ width: 24, height: 24, borderRadius: '50%', background: inPool ? `${playerColors[p.id]}20` : 'var(--surface)', color: inPool ? playerColors[p.id] : 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800 }}>
                         {p.name[0]}
@@ -495,12 +499,20 @@ export default function PoolDetail() {
 
   const handleAssign = async (playerId: string) => {
     if (!selectedCell) return;
+
+    // Check if the square is already claimed (using current grid data)
+    const currentCell = pool.grid[selectedCell.r]?.[selectedCell.c];
+    if (currentCell?.player_id) {
+      alert('This square is already claimed by ' + (currentCell.player_name || 'another player'));
+      return;
+    }
+
     try {
       // Check if player is already in the pool
       const isInPool = pool.players.some(p => p.id === playerId);
 
       if (!isInPool) {
-        // Get player details to add them to the pool
+        // Get player details to add them to the pool first
         const playerDetails = await allPlayers.get(playerId);
         await playersApi.add(pool.id, playerDetails.name, playerDetails.phone || undefined, playerDetails.email || undefined);
       }
@@ -509,6 +521,9 @@ export default function PoolDetail() {
       setSelectedCell(null);
       loadPool();
     } catch (error) {
+      // If assign failed but player was just added, they'll show up with 0 squares
+      // Reload to get fresh data and show accurate state
+      loadPool();
       alert(error instanceof Error ? error.message : 'Failed to assign');
     }
   };
@@ -812,26 +827,31 @@ export default function PoolDetail() {
   const selectedCellData = selectedCell ? pool.grid[selectedCell.r]?.[selectedCell.c] : null;
 
   return (
-    <div style={{ maxWidth: 840, margin: '0 auto', padding: 24 }}>
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: 'clamp(12px, 4vw, 24px)' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'clamp(12px, 3vw, 16px)', flexWrap: 'wrap', gap: 'clamp(6px, 2vw, 12px)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 2vw, 12px)' }}>
           <Link to="/" style={{
             background: 'none',
             border: '1px solid var(--border)',
             borderRadius: 8,
             color: 'var(--muted)',
-            padding: '6px 10px',
-            fontSize: 12,
+            padding: 'clamp(6px, 1.5vw, 10px)',
+            fontSize: 'clamp(11px, 2.5vw, 12px)',
             textDecoration: 'none',
+            minHeight: 44,
+            minWidth: 44,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}>
             ← Pools
           </Link>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, fontFamily: 'var(--font-mono)' }}>
+            <div style={{ fontSize: 'clamp(14px, 4vw, 18px)', fontWeight: 800, fontFamily: 'var(--font-mono)' }}>
               <span style={{ color: 'var(--green)' }}>■</span> {pool.away_team} vs {pool.home_team}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+            <div style={{ fontSize: 'clamp(10px, 2.5vw, 11px)', color: 'var(--muted)' }}>
               {sc.name} • ${pool.denomination}/sq • {sc.periods.length} periods
             </div>
           </div>
@@ -843,53 +863,54 @@ export default function PoolDetail() {
             color: 'white',
             border: 'none',
             borderRadius: 8,
-            padding: '8px 14px',
-            fontSize: 12,
+            padding: 'clamp(8px, 2vw, 12px) clamp(12px, 3vw, 16px)',
+            fontSize: 'clamp(11px, 2.5vw, 12px)',
             fontWeight: 700,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: 6,
+            minHeight: 44,
           }}
         >
-          📤 Share Pool
+          📤 Share
         </button>
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', flex: 1, minWidth: 100 }}>
-          <div style={{ fontSize: 10, color: 'var(--dim)', fontWeight: 700, letterSpacing: 1, fontFamily: 'var(--font-mono)' }}>POOL</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--green)', fontFamily: 'var(--font-mono)' }}>${poolTotal}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(70px, 1fr))', gap: 'clamp(6px, 2vw, 10px)', marginBottom: 'clamp(12px, 3vw, 16px)' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 'clamp(10px, 2.5vw, 14px)', textAlign: 'center' }}>
+          <div style={{ fontSize: 'clamp(8px, 2vw, 10px)', color: 'var(--dim)', fontWeight: 700, letterSpacing: 0.5, fontFamily: 'var(--font-mono)' }}>POOL</div>
+          <div style={{ fontSize: 'clamp(16px, 4vw, 22px)', fontWeight: 800, color: 'var(--green)', fontFamily: 'var(--font-mono)' }}>${poolTotal}</div>
         </div>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', flex: 1, minWidth: 100 }}>
-          <div style={{ fontSize: 10, color: 'var(--dim)', fontWeight: 700, letterSpacing: 1, fontFamily: 'var(--font-mono)' }}>CLAIMED</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: claimedCount === 100 ? 'var(--green)' : 'var(--gold)', fontFamily: 'var(--font-mono)' }}>{claimedCount}%</div>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 'clamp(10px, 2.5vw, 14px)', textAlign: 'center' }}>
+          <div style={{ fontSize: 'clamp(8px, 2vw, 10px)', color: 'var(--dim)', fontWeight: 700, letterSpacing: 0.5, fontFamily: 'var(--font-mono)' }}>CLAIMED</div>
+          <div style={{ fontSize: 'clamp(16px, 4vw, 22px)', fontWeight: 800, color: claimedCount === 100 ? 'var(--green)' : 'var(--gold)', fontFamily: 'var(--font-mono)' }}>{claimedCount}%</div>
         </div>
         {pendingSquaresCount > 0 && (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--purple)', borderRadius: 10, padding: '14px 16px', flex: 1, minWidth: 100 }}>
-            <div style={{ fontSize: 10, color: 'var(--purple)', fontWeight: 700, letterSpacing: 1, fontFamily: 'var(--font-mono)' }}>PENDING</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--purple)', fontFamily: 'var(--font-mono)' }}>{pendingSquaresCount}</div>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--purple)', borderRadius: 8, padding: 'clamp(10px, 2.5vw, 14px)', textAlign: 'center' }}>
+            <div style={{ fontSize: 'clamp(8px, 2vw, 10px)', color: 'var(--purple)', fontWeight: 700, letterSpacing: 0.5, fontFamily: 'var(--font-mono)' }}>PENDING</div>
+            <div style={{ fontSize: 'clamp(16px, 4vw, 22px)', fontWeight: 800, color: 'var(--purple)', fontFamily: 'var(--font-mono)' }}>{pendingSquaresCount}</div>
           </div>
         )}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', flex: 1, minWidth: 100 }}>
-          <div style={{ fontSize: 10, color: 'var(--dim)', fontWeight: 700, letterSpacing: 1, fontFamily: 'var(--font-mono)' }}>PLAYERS</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--blue)', fontFamily: 'var(--font-mono)' }}>{pool.players.length}</div>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 'clamp(10px, 2.5vw, 14px)', textAlign: 'center' }}>
+          <div style={{ fontSize: 'clamp(8px, 2vw, 10px)', color: 'var(--dim)', fontWeight: 700, letterSpacing: 0.5, fontFamily: 'var(--font-mono)' }}>PLAYERS</div>
+          <div style={{ fontSize: 'clamp(16px, 4vw, 22px)', fontWeight: 800, color: 'var(--blue)', fontFamily: 'var(--font-mono)' }}>{pool.players.length}</div>
         </div>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', flex: 1, minWidth: 100 }}>
-          <div style={{ fontSize: 10, color: 'var(--dim)', fontWeight: 700, letterSpacing: 1, fontFamily: 'var(--font-mono)' }}>STATUS</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: isLocked ? 'var(--green)' : 'var(--gold)', fontFamily: 'var(--font-mono)' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 'clamp(10px, 2.5vw, 14px)', textAlign: 'center' }}>
+          <div style={{ fontSize: 'clamp(8px, 2vw, 10px)', color: 'var(--dim)', fontWeight: 700, letterSpacing: 0.5, fontFamily: 'var(--font-mono)' }}>STATUS</div>
+          <div style={{ fontSize: 'clamp(16px, 4vw, 22px)', fontWeight: 800, color: isLocked ? 'var(--green)' : 'var(--gold)', fontFamily: 'var(--font-mono)' }}>
             {isLocked ? 'Locked' : 'Open'}
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>
+      <div style={{ display: 'flex', gap: 'clamp(4px, 1.5vw, 8px)', marginBottom: 'clamp(12px, 3vw, 16px)', borderBottom: '1px solid var(--border)', paddingBottom: 10, overflowX: 'auto', WebkitOverflowScrolling: 'touch' as const }}>
         {[
           { id: 'grid', label: 'GRID' },
           { id: 'players', label: `PLAYERS (${pool.players.length})` },
-          { id: 'settings', label: '⚙️ SETTINGS' },
+          { id: 'settings', label: '⚙️' },
         ].map(t => (
           <button
             key={t.id}
@@ -899,11 +920,13 @@ export default function PoolDetail() {
               color: tab === t.id ? 'var(--bg)' : 'var(--muted)',
               border: `1px solid ${tab === t.id ? 'var(--green)' : 'var(--border)'}`,
               borderRadius: 6,
-              padding: '6px 14px',
-              fontSize: 11,
+              padding: 'clamp(8px, 2vw, 10px) clamp(10px, 2.5vw, 14px)',
+              fontSize: 'clamp(10px, 2.5vw, 11px)',
               fontWeight: 700,
               fontFamily: 'var(--font-mono)',
               letterSpacing: 0.5,
+              whiteSpace: 'nowrap',
+              minHeight: 40,
             }}
           >
             {t.label}
@@ -1005,18 +1028,18 @@ export default function PoolDetail() {
           )}
 
           {/* Grid */}
-          <div style={{ overflowX: 'auto', paddingBottom: 8 }}>
-            <div style={{ display: 'inline-block', minWidth: 500 }}>
+          <div style={{ overflowX: 'auto', paddingBottom: 8, WebkitOverflowScrolling: 'touch' as const }}>
+            <div style={{ display: 'inline-block', minWidth: 'min-content' }}>
               {/* Column header - Away team */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 6, marginLeft: 40 }}>
-                <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--blue)', letterSpacing: 2, fontFamily: 'var(--font-mono)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 4, marginLeft: 'clamp(24px, 6vw, 40px)' }}>
+                <span style={{ fontSize: 'clamp(9px, 2.5vw, 12px)', fontWeight: 800, color: 'var(--blue)', letterSpacing: 1, fontFamily: 'var(--font-mono)' }}>
                   ← {pool.away_team} →
                 </span>
               </div>
               {/* Column digits */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(32px, min(9vw, 52px)))', marginLeft: 24, gap: 2 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(26px, min(8vw, 44px)))', marginLeft: 'clamp(24px, 6vw, 40px)', gap: 1 }}>
                 {(pool.col_digits || Array(10).fill('?')).map((d, i) => (
-                  <div key={i} style={{ height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'clamp(10px, 2.5vw, 14px)', fontWeight: 800, color: pool.col_digits ? 'var(--blue)' : 'var(--dim)', fontFamily: 'var(--font-mono)' }}>
+                  <div key={i} style={{ height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'clamp(9px, 2vw, 12px)', fontWeight: 800, color: pool.col_digits ? 'var(--blue)' : 'var(--dim)', fontFamily: 'var(--font-mono)' }}>
                     {d}
                   </div>
                 ))}
@@ -1025,21 +1048,21 @@ export default function PoolDetail() {
               <div style={{ display: 'flex' }}>
                 {/* Row header - Home team */}
                 <div style={{ display: 'flex', alignItems: 'stretch' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', marginRight: 2 }}>
-                    <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--gold)', letterSpacing: 2, fontFamily: 'var(--font-mono)', writingMode: 'vertical-lr', transform: 'rotate(180deg)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', marginRight: 2, width: 'clamp(12px, 3vw, 18px)' }}>
+                    <span style={{ fontSize: 'clamp(9px, 2.5vw, 12px)', fontWeight: 800, color: 'var(--gold)', letterSpacing: 1, fontFamily: 'var(--font-mono)', writingMode: 'vertical-lr', transform: 'rotate(180deg)' }}>
                       ← {pool.home_team} →
                     </span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateRows: 'repeat(10, minmax(32px, min(9vw, 52px)))', gap: 2 }}>
+                  <div style={{ display: 'grid', gridTemplateRows: 'repeat(10, minmax(26px, min(8vw, 44px)))', gap: 1 }}>
                     {(pool.row_digits || Array(10).fill('?')).map((d, i) => (
-                      <div key={i} style={{ width: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'clamp(10px, 2.5vw, 14px)', fontWeight: 800, color: pool.row_digits ? 'var(--gold)' : 'var(--dim)', fontFamily: 'var(--font-mono)' }}>
+                      <div key={i} style={{ width: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'clamp(9px, 2vw, 12px)', fontWeight: 800, color: pool.row_digits ? 'var(--gold)' : 'var(--dim)', fontFamily: 'var(--font-mono)' }}>
                         {d}
                       </div>
                     ))}
                   </div>
                 </div>
                 {/* Grid cells */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(32px, min(9vw, 52px)))', gap: 2, background: 'var(--border)', padding: 2, borderRadius: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(26px, min(8vw, 44px)))', gap: 1, background: 'var(--border)', padding: 2, borderRadius: 6 }}>
                   {pool.grid.map((row, r) => row.map((cell, c) => {
                     const isSelected = selectedCell?.r === r && selectedCell?.c === c;
                     const isPendingApproval = cell?.claim_status === 'pending';
@@ -1082,44 +1105,41 @@ export default function PoolDetail() {
                         key={`${r}-${c}`}
                         onClick={() => handleCellClick(r, c)}
                         style={{
-                          width: 'min(9vw, 52px)',
-                          height: 'min(9vw, 52px)',
-                          minWidth: 32,
-                          minHeight: 32,
+                          aspectRatio: '1',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           background: bgColor,
                           border: borderStyle,
-                          borderRadius: 4,
+                          borderRadius: 3,
                           cursor: 'pointer',
                           position: 'relative',
-                          padding: 2,
+                          padding: 1,
                         }}
                       >
                         {isClaimed ? (
                           <span style={{
-                            fontSize: 'clamp(7px, 1.8vw, 10px)',
+                            fontSize: 'clamp(6px, 1.6vw, 9px)',
                             fontWeight: 700,
                             color: isPendingApproval ? '#A78BFA' : isUnpaid ? 'var(--orange)' : playerColor || 'var(--muted)',
                             textAlign: 'center',
-                            lineHeight: 1.1,
-                            wordBreak: 'break-word',
+                            lineHeight: 1,
                             overflow: 'hidden',
+                            maxWidth: '100%',
                           }}>
                             {formatPlayerName(cell.player_name)}
                           </span>
                         ) : (
                           <div style={{
-                            width: 10,
-                            height: 10,
-                            border: '2px solid var(--border)',
-                            borderRadius: 2,
+                            width: 8,
+                            height: 8,
+                            border: '1px solid var(--border)',
+                            borderRadius: 1,
                             opacity: 0.3,
                           }} />
                         )}
-                        {winner && <div style={{ position: 'absolute', top: -4, right: -4, fontSize: 10 }}>🏆</div>}
-                        {isPendingApproval && <div style={{ position: 'absolute', top: -4, right: -4, fontSize: 8 }}>⏳</div>}
+                        {winner && <div style={{ position: 'absolute', top: -3, right: -3, fontSize: 8 }}>🏆</div>}
+                        {isPendingApproval && <div style={{ position: 'absolute', top: -3, right: -3, fontSize: 7 }}>⏳</div>}
                       </div>
                     );
                   }))}
@@ -1131,8 +1151,8 @@ export default function PoolDetail() {
           {/* Legend */}
           <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
             {pool.players.map(p => (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                <div style={{ width: 8, height: 8, borderRadius: 2, background: `${playerColors[p.id]}50`, border: `1px solid ${playerColors[p.id]}` }} />
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={{ width: 10, height: 10, borderRadius: 2, background: `${playerColors[p.id]}25`, border: `2px solid ${playerColors[p.id]}60` }} />
                 <span style={{ fontSize: 10, color: p.paid ? 'var(--muted)' : 'var(--orange)' }}>
                   {formatPlayerName(p.name)} ({p.square_count || 0}){!p.paid && ' 💸'}
                 </span>
@@ -1494,43 +1514,45 @@ export default function PoolDetail() {
 
           {/* Add player modal */}
           {showAddPlayer && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={() => setShowAddPlayer(false)}>
-              <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, width: '100%', maxWidth: 400 }}>
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }} onClick={() => setShowAddPlayer(false)}>
+              <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 'clamp(16px, 4vw, 24px)', width: '100%', maxWidth: 400 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                   <h3 style={{ fontSize: 16, fontWeight: 800, fontFamily: 'var(--font-mono)', margin: 0 }}>Add Player</h3>
-                  <button onClick={() => setShowAddPlayer(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18 }}>✕</button>
+                  <button onClick={() => setShowAddPlayer(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18, minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
                 </div>
                 <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>NAME *</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>NAME *</div>
                   <input
                     placeholder="e.g. John Smith"
                     value={newPlayer.name}
                     onChange={e => setNewPlayer({ ...newPlayer, name: e.target.value })}
-                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', minHeight: 44, color: 'var(--text)', fontSize: 16, outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
                 <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>PHONE</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>PHONE</div>
                   <input
                     placeholder="(555) 123-4567"
                     value={newPlayer.phone}
                     onChange={e => setNewPlayer({ ...newPlayer, phone: e.target.value })}
-                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+                    type="tel"
+                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', minHeight: 44, color: 'var(--text)', fontSize: 16, outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>EMAIL</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>EMAIL</div>
                   <input
                     placeholder="john@email.com"
                     value={newPlayer.email}
                     onChange={e => setNewPlayer({ ...newPlayer, email: e.target.value })}
-                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+                    type="email"
+                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', minHeight: 44, color: 'var(--text)', fontSize: 16, outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
                 <button
                   onClick={handleAddPlayer}
                   disabled={!newPlayer.name || (!newPlayer.phone && !newPlayer.email)}
-                  style={{ width: '100%', background: 'var(--green)', color: 'var(--bg)', border: 'none', borderRadius: 8, padding: '12px', fontSize: 14, fontWeight: 700 }}
+                  style={{ width: '100%', background: 'var(--green)', color: 'var(--bg)', border: 'none', borderRadius: 8, padding: '12px 14px', minHeight: 48, fontSize: 15, fontWeight: 700 }}
                 >
                   Add Player
                 </button>
