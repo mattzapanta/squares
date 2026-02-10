@@ -1014,9 +1014,9 @@ export default function PoolDetail() {
                 </span>
               </div>
               {/* Column digits */}
-              <div style={{ display: 'flex', marginLeft: 40 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(32px, min(9vw, 52px)))', marginLeft: 24, gap: 2 }}>
                 {(pool.col_digits || Array(10).fill('?')).map((d, i) => (
-                  <div key={i} style={{ width: 44, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: pool.col_digits ? 'var(--blue)' : 'var(--dim)', fontFamily: 'var(--font-mono)' }}>
+                  <div key={i} style={{ height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'clamp(10px, 2.5vw, 14px)', fontWeight: 800, color: pool.col_digits ? 'var(--blue)' : 'var(--dim)', fontFamily: 'var(--font-mono)' }}>
                     {d}
                   </div>
                 ))}
@@ -1030,16 +1030,16 @@ export default function PoolDetail() {
                       ← {pool.home_team} →
                     </span>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ display: 'grid', gridTemplateRows: 'repeat(10, minmax(32px, min(9vw, 52px)))', gap: 2 }}>
                     {(pool.row_digits || Array(10).fill('?')).map((d, i) => (
-                      <div key={i} style={{ width: 20, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: pool.row_digits ? 'var(--gold)' : 'var(--dim)', fontFamily: 'var(--font-mono)' }}>
+                      <div key={i} style={{ width: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'clamp(10px, 2.5vw, 14px)', fontWeight: 800, color: pool.row_digits ? 'var(--gold)' : 'var(--dim)', fontFamily: 'var(--font-mono)' }}>
                         {d}
                       </div>
                     ))}
                   </div>
                 </div>
                 {/* Grid cells */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 44px)', gap: 2, background: 'var(--border)', padding: 2, borderRadius: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(32px, min(9vw, 52px)))', gap: 2, background: 'var(--border)', padding: 2, borderRadius: 8 }}>
                   {pool.grid.map((row, r) => row.map((cell, c) => {
                     const isSelected = selectedCell?.r === r && selectedCell?.c === c;
                     const isPendingApproval = cell?.claim_status === 'pending';
