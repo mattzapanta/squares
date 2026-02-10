@@ -543,3 +543,194 @@ export const allPlayers = {
   delete: (id: string) =>
     request<{ message: string }>(`/players/${id}`, { method: 'DELETE' }),
 };
+
+// ================== Messaging System ==================
+
+export interface MessageTemplate {
+  id: string;
+  admin_id: string | null;
+  name: string;
+  category: 'invite' | 'reminder' | 'notification' | 'custom';
+  trigger_type: 'manual' | 'automatic';
+  sms_template: string | null;
+  email_subject: string | null;
+  email_template: string | null;
+  variables: string[];
+  is_active: boolean;
+  is_system: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MessageSend {
+  id: string;
+  admin_id: string;
+  template_id: string | null;
+  pool_id: string | null;
+  group_id: string | null;
+  message_type: string;
+  channel: 'sms' | 'email' | 'both';
+  recipient_count: number;
+  sent_count: number;
+  failed_count: number;
+  sms_content: string | null;
+  email_subject: string | null;
+  email_content: string | null;
+  created_at: string;
+  template_name?: string;
+  pool_name?: string;
+  group_name?: string;
+}
+
+export interface MessageRecipient {
+  id: string;
+  send_id: string;
+  player_id: string;
+  player_name: string;
+  player_phone: string | null;
+  player_email: string | null;
+  channel: 'sms' | 'email';
+  status: 'pending' | 'sent' | 'failed' | 'delivered';
+  sent_at: string | null;
+  error: string | null;
+  created_at: string;
+}
+
+export interface SendMessageRequest {
+  template_id?: string;
+  sms_content?: string;
+  email_subject?: string;
+  email_content?: string;
+  channel: 'sms' | 'email' | 'both';
+  recipient_type: 'all' | 'pool' | 'group' | 'custom';
+  pool_id?: string;
+  group_id?: string;
+  player_ids?: string[];
+  filters?: {
+    payment_status?: 'paid' | 'unpaid' | 'partial';
+    has_squares?: boolean;
+    has_phone?: boolean;
+    has_email?: boolean;
+  };
+}
+
+export interface SendResult {
+  success: boolean;
+  send_id?: string;
+  recipient_count: number;
+  sent_count: number;
+  failed_count: number;
+  skipped_count: number;
+  errors?: string[];
+}
+
+export interface MessagePreview {
+  sms: string;
+  sms_character_count: number;
+  sms_segments: number;
+  email_subject: string;
+  email_content: string;
+  sample_player: { id: string; name: string } | null;
+}
+
+export interface DailyBudget {
+  canSend: boolean;
+  used: number;
+  limit: number;
+}
+
+export const messages = {
+  // Templates
+  getTemplates: () => request<MessageTemplate[]>('/messages/templates'),
+
+  getTemplate: (id: string) => request<MessageTemplate>(`/messages/templates/${id}`),
+
+  createTemplate: (data: {
+    name: string;
+    category: 'invite' | 'reminder' | 'notification' | 'custom';
+    trigger_type?: 'manual' | 'automatic';
+    sms_template?: string;
+    email_subject?: string;
+    email_template?: string;
+    variables?: string[];
+  }) =>
+    request<MessageTemplate>('/messages/templates', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateTemplate: (
+    id: string,
+    data: {
+      name?: string;
+      category?: 'invite' | 'reminder' | 'notification' | 'custom';
+      sms_template?: string;
+      email_subject?: string;
+      email_template?: string;
+      variables?: string[];
+      is_active?: boolean;
+    }
+  ) =>
+    request<MessageTemplate>(`/messages/templates/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  deleteTemplate: (id: string) =>
+    request<{ message: string }>(`/messages/templates/${id}`, { method: 'DELETE' }),
+
+  // Preview
+  preview: (data: {
+    template_id?: string;
+    sms_content?: string;
+    email_subject?: string;
+    email_content?: string;
+    player_id?: string;
+    pool_id?: string;
+  }) =>
+    request<MessagePreview>('/messages/preview', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Budget
+  getBudget: () => request<DailyBudget>('/messages/budget'),
+
+  // Send
+  send: (data: SendMessageRequest) =>
+    request<SendResult>('/messages/send', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // History
+  getHistory: (options?: { pool_id?: string; limit?: number; offset?: number }) => {
+    const params = new URLSearchParams();
+    if (options?.pool_id) params.set('pool_id', options.pool_id);
+    if (options?.limit) params.set('limit', options.limit.toString());
+    if (options?.offset) params.set('offset', options.offset.toString());
+    const queryString = params.toString();
+    return request<MessageSend[]>(`/messages/history${queryString ? `?${queryString}` : ''}`);
+  },
+
+  getSendDetails: (id: string) =>
+    request<MessageSend & { recipients: MessageRecipient[] }>(`/messages/history/${id}`),
+
+  retryFailed: (id: string) =>
+    request<{ message: string; retried: number; succeeded: number; failed: number }>(
+      `/messages/history/${id}/retry`,
+      { method: 'POST' }
+    ),
+
+  // Quick pool actions
+  quickInvite: (poolId: string, playerIds?: string[], groupId?: string) =>
+    request<SendResult>(`/messages/pool/${poolId}/invite`, {
+      method: 'POST',
+      body: JSON.stringify({ player_ids: playerIds, group_id: groupId }),
+    }),
+
+  quickReminder: (poolId: string) =>
+    request<SendResult>(`/messages/pool/${poolId}/reminder`, {
+      method: 'POST',
+    }),
+};

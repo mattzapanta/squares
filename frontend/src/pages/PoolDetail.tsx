@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
 import { PoolDetail as PoolDetailType, SPORTS_CONFIG, GridCell, PayoutStructure } from '../types';
 import { pools as poolsApi, squares, players as playersApi, scores as scoresApi, payments, allPlayers, SearchedPlayer, PlayerPaymentSummary, LiveScoreData, CurrentWinner, PlayerWalletBalance, PlayerInviteLink, PlayerWithStats } from '../api/client';
+import ComposeMessage from '../components/ComposeMessage';
 
 // Format name as "First L." (e.g., "Matt Zapanta" -> "Matt Z.", "Matt" -> "Matt")
 function formatPlayerName(fullName: string | undefined): string {
@@ -323,6 +324,7 @@ export default function PoolDetail() {
   const [sendingInvites, setSendingInvites] = useState(false);
   const [sendingReminders, setSendingReminders] = useState(false);
   const [notifyResult, setNotifyResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [showComposeModal, setShowComposeModal] = useState(false);
 
   const loadPool = async () => {
     if (!id) return;
@@ -2410,6 +2412,23 @@ export default function PoolDetail() {
                     {sendingReminders ? 'Sending...' : '💸 Send Payment Reminders'}
                   </button>
                 </div>
+                <button
+                  onClick={() => setShowComposeModal(true)}
+                  style={{
+                    width: '100%',
+                    background: 'var(--surface)',
+                    color: 'var(--text)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 8,
+                    padding: '10px 14px',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    marginBottom: 12,
+                    cursor: 'pointer',
+                  }}
+                >
+                  ✉️ Send Custom Message
+                </button>
 
                 {/* Notification result */}
                 {notifyResult && (
@@ -2530,6 +2549,15 @@ export default function PoolDetail() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Compose Message Modal */}
+      {showComposeModal && pool && (
+        <ComposeMessage
+          onClose={() => setShowComposeModal(false)}
+          poolId={pool.id}
+          poolName={`${pool.away_team} vs ${pool.home_team}`}
+        />
       )}
     </div>
   );

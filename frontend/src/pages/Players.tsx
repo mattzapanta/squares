@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { allPlayers, groups, PlayerWithStats, PlayerDetail, PlayerGroup, GroupWithMembers } from '../api/client';
+import { allPlayers, groups, messages, PlayerWithStats, PlayerDetail, PlayerGroup, GroupWithMembers, MessageSend } from '../api/client';
+import ComposeMessage from '../components/ComposeMessage';
 
 const GROUP_COLORS = [
   '#4ADE80', '#60A5FA', '#FBBF24', '#A78BFA', '#F472B6',
@@ -8,7 +9,7 @@ const GROUP_COLORS = [
 ];
 
 export default function Players() {
-  const [activeTab, setActiveTab] = useState<'players' | 'groups'>('players');
+  const [activeTab, setActiveTab] = useState<'players' | 'groups' | 'messages'>('players');
 
   // Players state
   const [playerList, setPlayerList] = useState<PlayerWithStats[]>([]);
@@ -29,6 +30,11 @@ export default function Players() {
   const [newGroup, setNewGroup] = useState({ name: '', description: '', color: '#4ADE80' });
   const [showAddMembers, setShowAddMembers] = useState(false);
   const [memberSelection, setMemberSelection] = useState<Set<string>>(new Set());
+
+  // Messages state
+  const [messageHistory, setMessageHistory] = useState<MessageSend[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(true);
+  const [showCompose, setShowCompose] = useState(false);
 
   // Load players
   const loadPlayers = async (searchQuery?: string) => {
@@ -77,9 +83,23 @@ export default function Players() {
     }
   };
 
+  // Load messages
+  const loadMessages = async () => {
+    try {
+      setMessagesLoading(true);
+      const data = await messages.getHistory();
+      setMessageHistory(data);
+    } catch (error) {
+      console.error('Failed to load messages:', error);
+    } finally {
+      setMessagesLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadPlayers();
     loadGroups();
+    loadMessages();
   }, []);
 
   useEffect(() => {
@@ -235,10 +255,14 @@ export default function Players() {
             ← Pools
           </Link>
           <button
-            onClick={() => activeTab === 'players' ? setShowCreate(true) : setShowCreateGroup(true)}
+            onClick={() => {
+              if (activeTab === 'players') setShowCreate(true);
+              else if (activeTab === 'groups') setShowCreateGroup(true);
+              else setShowCompose(true);
+            }}
             style={{ background: 'var(--green)', color: 'var(--bg)', border: 'none', borderRadius: 8, padding: '10px 16px', minHeight: 44, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
           >
-            + New {activeTab === 'players' ? 'Player' : 'Group'}
+            {activeTab === 'messages' ? '+ Compose Message' : `+ New ${activeTab === 'players' ? 'Player' : 'Group'}`}
           </button>
         </div>
         <div>
@@ -286,6 +310,23 @@ export default function Players() {
           }}
         >
           👥 Groups ({groupList.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('messages')}
+          style={{
+            flex: 1,
+            background: activeTab === 'messages' ? 'var(--bg)' : 'transparent',
+            border: 'none',
+            borderRadius: 8,
+            padding: '10px 12px',
+            minHeight: 44,
+            fontSize: 13,
+            fontWeight: activeTab === 'messages' ? 700 : 400,
+            color: activeTab === 'messages' ? 'var(--text)' : 'var(--muted)',
+            cursor: 'pointer',
+          }}
+        >
+          Messages
         </button>
       </div>
 
@@ -616,6 +657,127 @@ export default function Players() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Messages Tab */}
+      {activeTab === 'messages' && (
+        <div>
+          {messagesLoading ? (
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>Loading messages...</div>
+          ) : messageHistory.length === 0 ? (
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 40, textAlign: 'center' }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>📬</div>
+              <div style={{ color: 'var(--muted)', marginBottom: 16 }}>No messages sent yet</div>
+              <button
+                onClick={() => setShowCompose(true)}
+                style={{
+                  background: 'var(--green)',
+                  color: 'var(--bg)',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '12px 24px',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Send Your First Message
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {messageHistory.map((msg) => {
+                const date = new Date(msg.created_at);
+                const isToday = new Date().toDateString() === date.toDateString();
+                const dateStr = isToday
+                  ? date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+                  : date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+                return (
+                  <div
+                    key={msg.id}
+                    style={{
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 10,
+                      padding: 16,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 700 }}>
+                          {msg.message_type === 'invite' ? 'Pool Invite' :
+                           msg.message_type === 'reminder' ? 'Payment Reminder' :
+                           msg.message_type === 'notification' ? 'Notification' : 'Custom Message'}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                          {msg.channel === 'sms' ? 'SMS' : msg.channel === 'email' ? 'Email' : 'SMS & Email'} • {dateStr}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <span style={{
+                          fontSize: 11,
+                          padding: '4px 8px',
+                          borderRadius: 12,
+                          background: 'rgba(74, 222, 128, 0.15)',
+                          color: 'var(--green)',
+                          fontWeight: 600,
+                        }}>
+                          {msg.sent_count} sent
+                        </span>
+                        {msg.failed_count > 0 && (
+                          <span style={{
+                            fontSize: 11,
+                            padding: '4px 8px',
+                            borderRadius: 12,
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            color: '#EF4444',
+                            fontWeight: 600,
+                          }}>
+                            {msg.failed_count} failed
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {msg.sms_content && (
+                      <div style={{
+                        background: 'var(--bg)',
+                        borderRadius: 8,
+                        padding: 12,
+                        fontSize: 13,
+                        color: 'var(--dim)',
+                        whiteSpace: 'pre-wrap',
+                        maxHeight: 80,
+                        overflow: 'hidden',
+                      }}>
+                        {msg.sms_content.length > 150 ? msg.sms_content.slice(0, 150) + '...' : msg.sms_content}
+                      </div>
+                    )}
+                    {!msg.sms_content && msg.email_subject && (
+                      <div style={{
+                        background: 'var(--bg)',
+                        borderRadius: 8,
+                        padding: 12,
+                        fontSize: 13,
+                        color: 'var(--dim)',
+                      }}>
+                        Subject: {msg.email_subject}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Compose Message Modal */}
+      {showCompose && (
+        <ComposeMessage
+          onClose={() => setShowCompose(false)}
+          onSent={loadMessages}
+        />
       )}
 
       {/* Create Player Modal */}

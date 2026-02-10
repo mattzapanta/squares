@@ -223,3 +223,123 @@ export interface PoolInvite {
   error: string | null;
   created_at: Date;
 }
+
+// Messaging System Types
+export type MessageCategory = 'invite' | 'reminder' | 'notification' | 'custom';
+export type MessageTrigger = 'manual' | 'automatic';
+export type MessageChannel = 'sms' | 'email' | 'both';
+export type MessageRecipientStatus = 'pending' | 'sent' | 'failed' | 'delivered';
+
+export interface MessageTemplate {
+  id: string;
+  admin_id: string | null;
+  name: string;
+  category: MessageCategory;
+  trigger_type: MessageTrigger;
+  sms_template: string | null;
+  email_subject: string | null;
+  email_template: string | null;
+  variables: string[];
+  is_active: boolean;
+  is_system: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface MessageSend {
+  id: string;
+  admin_id: string;
+  template_id: string | null;
+  pool_id: string | null;
+  group_id: string | null;
+  message_type: string;
+  channel: MessageChannel;
+  recipient_count: number;
+  sent_count: number;
+  failed_count: number;
+  sms_content: string | null;
+  email_subject: string | null;
+  email_content: string | null;
+  created_at: Date;
+}
+
+export interface MessageRecipient {
+  id: string;
+  send_id: string;
+  player_id: string;
+  channel: 'sms' | 'email';
+  status: MessageRecipientStatus;
+  sent_at: Date | null;
+  error: string | null;
+  created_at: Date;
+}
+
+export interface PoolMessageSettings {
+  id: string;
+  pool_id: string;
+  event_type: string;
+  enabled: boolean;
+  template_id: string | null;
+  cooldown_minutes: number;
+  max_daily_per_player: number;
+  created_at: Date;
+}
+
+export interface NotificationCooldown {
+  id: string;
+  player_id: string;
+  pool_id: string | null;
+  event_type: string;
+  last_sent_at: Date;
+  message_count: number;
+}
+
+export interface AdminMessageSettings {
+  admin_id: string;
+  daily_sms_limit: number;
+  daily_email_limit: number;
+  quiet_hours_start: string | null;
+  quiet_hours_end: string | null;
+  auto_claim_notifications: boolean;
+  auto_payment_notifications: boolean;
+  updated_at: Date;
+}
+
+// Request types for messaging
+export interface SendMessageRequest {
+  template_id?: string;
+  sms_content?: string;
+  email_subject?: string;
+  email_content?: string;
+  channel: MessageChannel;
+  recipient_type: 'all' | 'pool' | 'group' | 'custom';
+  pool_id?: string;
+  group_id?: string;
+  player_ids?: string[];
+  filters?: {
+    payment_status?: 'paid' | 'unpaid' | 'partial';
+    has_squares?: boolean;
+    has_phone?: boolean;
+    has_email?: boolean;
+  };
+}
+
+export interface CreateTemplateRequest {
+  name: string;
+  category: MessageCategory;
+  trigger_type?: MessageTrigger;
+  sms_template?: string;
+  email_subject?: string;
+  email_template?: string;
+  variables?: string[];
+}
+
+export interface UpdateTemplateRequest {
+  name?: string;
+  category?: MessageCategory;
+  sms_template?: string;
+  email_subject?: string;
+  email_template?: string;
+  variables?: string[];
+  is_active?: boolean;
+}

@@ -14,6 +14,7 @@ import gamesRoutes from './routes/games.js';
 import paymentsRoutes from './routes/payments.js';
 import groupsRoutes from './routes/groups.js';
 import allPlayersRoutes from './routes/allPlayers.js';
+import messagesRoutes from './routes/messages.js';
 
 const app = express();
 
@@ -72,6 +73,7 @@ app.use('/api/games', gamesRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/groups', groupsRoutes);
 app.use('/api/players', allPlayersRoutes);
+app.use('/api/messages', messagesRoutes);
 
 // Error handler
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
