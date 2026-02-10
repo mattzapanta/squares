@@ -89,9 +89,16 @@ export default function Players() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  // Check if name has at least first and last name
+  const isValidFullName = (name: string) => name.trim().split(/\s+/).length >= 2;
+
   // Player handlers
   const handleCreatePlayer = async () => {
     if (!newPlayer.name.trim()) return;
+    if (!isValidFullName(newPlayer.name)) {
+      setCreateError('Please enter full name (first and last)');
+      return;
+    }
     if (!newPlayer.phone.trim() && !newPlayer.email.trim()) {
       setCreateError('Phone or email is required');
       return;

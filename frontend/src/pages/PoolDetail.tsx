@@ -4,6 +4,18 @@ import { useAuth } from '../App';
 import { PoolDetail as PoolDetailType, SPORTS_CONFIG, GridCell, PayoutStructure } from '../types';
 import { pools as poolsApi, squares, players as playersApi, scores as scoresApi, payments, allPlayers, SearchedPlayer, PlayerPaymentSummary, LiveScoreData, CurrentWinner, PlayerWalletBalance, PlayerInviteLink, PlayerWithStats } from '../api/client';
 
+// Format name as "First L." (e.g., "Matt Zapanta" -> "Matt Z.", "Matt" -> "Matt")
+function formatPlayerName(fullName: string | undefined): string {
+  if (!fullName) return '?';
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length === 1) {
+    return parts[0];
+  }
+  const firstName = parts[0];
+  const lastInitial = parts[parts.length - 1][0];
+  return `${firstName} ${lastInitial}.`;
+}
+
 // Cell Assignment Modal with inline player creation
 function CellAssignmentModal({
   selectedCell,
@@ -47,8 +59,15 @@ function CellAssignmentModal({
   // Check if player is already in this pool
   const isInPool = (playerId: string) => pool.players.some(p => p.id === playerId);
 
+  // Check if name has at least first and last name
+  const isValidFullName = (name: string) => name.trim().split(/\s+/).length >= 2;
+
   const handleCreateAndAssign = async () => {
     if (!inlinePlayer.name || (!inlinePlayer.phone && !inlinePlayer.email)) return;
+    if (!isValidFullName(inlinePlayer.name)) {
+      alert('Please enter a full name (first and last name)');
+      return;
+    }
 
     setCreating(true);
     try {
@@ -132,9 +151,9 @@ function CellAssignmentModal({
               </button>
             </div>
             <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 4, fontFamily: 'var(--font-mono)' }}>NAME *</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim)', letterSpacing: 1, marginBottom: 4, fontFamily: 'var(--font-mono)' }}>FULL NAME *</div>
               <input
-                placeholder="e.g. John Smith"
+                placeholder="First Last (e.g. John Smith)"
                 value={inlinePlayer.name}
                 onChange={e => setInlinePlayer({ ...inlinePlayer, name: e.target.value })}
                 autoFocus
@@ -1063,33 +1082,44 @@ export default function PoolDetail() {
                         key={`${r}-${c}`}
                         onClick={() => handleCellClick(r, c)}
                         style={{
-                          width: 44,
-                          height: 44,
+                          width: 'min(9vw, 52px)',
+                          height: 'min(9vw, 52px)',
+                          minWidth: 32,
+                          minHeight: 32,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           background: bgColor,
                           border: borderStyle,
-                          borderRadius: 3,
+                          borderRadius: 4,
                           cursor: 'pointer',
                           position: 'relative',
+                          padding: 2,
                         }}
                       >
                         {isClaimed ? (
-                          <span style={{ fontSize: 9, fontWeight: 800, color: isPendingApproval ? '#A78BFA' : isUnpaid ? 'var(--orange)' : playerColor || 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
-                            {cell.player_name?.split(' ')[0]?.substring(0, 3)?.toUpperCase()}
+                          <span style={{
+                            fontSize: 'clamp(7px, 1.8vw, 10px)',
+                            fontWeight: 700,
+                            color: isPendingApproval ? '#A78BFA' : isUnpaid ? 'var(--orange)' : playerColor || 'var(--muted)',
+                            textAlign: 'center',
+                            lineHeight: 1.1,
+                            wordBreak: 'break-word',
+                            overflow: 'hidden',
+                          }}>
+                            {formatPlayerName(cell.player_name)}
                           </span>
                         ) : (
                           <div style={{
-                            width: 12,
-                            height: 12,
+                            width: 10,
+                            height: 10,
                             border: '2px solid var(--border)',
                             borderRadius: 2,
-                            opacity: 0.4,
+                            opacity: 0.3,
                           }} />
                         )}
-                        {winner && <div style={{ position: 'absolute', top: -3, right: -3, fontSize: 10 }}>🏆</div>}
-                        {isPendingApproval && <div style={{ position: 'absolute', top: -3, right: -3, fontSize: 8 }}>⏳</div>}
+                        {winner && <div style={{ position: 'absolute', top: -4, right: -4, fontSize: 10 }}>🏆</div>}
+                        {isPendingApproval && <div style={{ position: 'absolute', top: -4, right: -4, fontSize: 8 }}>⏳</div>}
                       </div>
                     );
                   }))}
@@ -1104,7 +1134,7 @@ export default function PoolDetail() {
               <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                 <div style={{ width: 8, height: 8, borderRadius: 2, background: `${playerColors[p.id]}50`, border: `1px solid ${playerColors[p.id]}` }} />
                 <span style={{ fontSize: 10, color: p.paid ? 'var(--muted)' : 'var(--orange)' }}>
-                  {p.name.split(' ')[0]} ({p.square_count || 0}){!p.paid && ' 💸'}
+                  {formatPlayerName(p.name)} ({p.square_count || 0}){!p.paid && ' 💸'}
                 </span>
               </div>
             ))}
