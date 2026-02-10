@@ -1007,7 +1007,7 @@ export default function PoolDetail() {
                     } else if (isUnpaid && cell?.claim_status === 'claimed') {
                       borderStyle = '1px dashed var(--orange)';
                     } else if (isClaimed) {
-                      borderStyle = `1px solid ${playerColor}40`;
+                      borderStyle = `2px solid ${playerColor}60`;
                     } else {
                       borderStyle = '2px solid var(--border)'; // Unclaimed: visible square border
                     }
@@ -1019,7 +1019,7 @@ export default function PoolDetail() {
                     } else if (isPendingApproval) {
                       bgColor = 'rgba(167, 139, 250, 0.15)';
                     } else if (isClaimed && playerColor) {
-                      bgColor = `${playerColor}15`;
+                      bgColor = `${playerColor}25`; // More visible for claimed squares
                     } else {
                       // Unclaimed squares: clean dark background with visible borders
                       bgColor = 'var(--bg)';
